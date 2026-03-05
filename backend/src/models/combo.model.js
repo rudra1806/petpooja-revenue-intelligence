@@ -59,5 +59,6 @@ const comboSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 comboSchema.index({ "items.product_id": 1 }); // this is used for efficient querying of combos by product_id
+comboSchema.index({ combo_score: -1 }); // this is used for efficient querying of combos by combo_score in descending order
 
 module.exports = mongoose.model("Combo", comboSchema);
