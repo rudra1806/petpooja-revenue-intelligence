@@ -30,15 +30,17 @@ const productSchema = new mongoose.Schema({
     selling_price: {
         type: Number,
         required: true,
+        min: 0
     },
     cost: {
         type: Number,
         required: true,
+        min: 0
     },
     description: {
         type: String,
     },
-    score: {
+    recommendation_score: {
         type: Number,
         default: 0,
     },
@@ -46,11 +48,9 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
-    isThereInCombo: {
-        type: Boolean,
-        default: false,
-    },
     modifiers: [modifierSchema],
 }, { timestamps: true });
+
+productSchema.index({ category: 1 }); // this is used for efficient querying of products by category
 
 module.exports = mongoose.model("Product", productSchema);

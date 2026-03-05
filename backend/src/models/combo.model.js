@@ -22,11 +22,6 @@ const comboSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    category: {
-        type: String,
-        required: true,
-        enum: ["meal", "snack_combo", "dessert_combo"],
-    },
     items: [comboItemSchema],
     total_selling_price: {
         type: Number,
@@ -43,7 +38,17 @@ const comboSchema = new mongoose.Schema({
     total_cost: {
         type: Number,
     },
-    score: {
+    support: {
+        type: Number,
+        default: 0
+    },
+
+    confidence: {
+        type: Number,
+        default: 0
+    },
+    combo_score: {
+        //combo_score = 0.4 × confidence + 0.3 × profit + 0.3 × demand 
         type: Number,
         default: 0,
     },
@@ -52,5 +57,7 @@ const comboSchema = new mongoose.Schema({
         default: 0,
     }
 }, { timestamps: true });
+
+comboSchema.index({ "items.product_id": 1 }); // this is used for efficient querying of combos by product_id
 
 module.exports = mongoose.model("Combo", comboSchema);
