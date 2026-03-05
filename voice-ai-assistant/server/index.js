@@ -63,7 +63,16 @@ app.post("/parse-order", async (req, res) => {
             parsed = { raw: aiReply };
         }
 
-        res.json(parsed);
+        let upsell = null;
+
+        if (parsed.items[0].name.toLowerCase().includes("pizza")) {
+            upsell = "Customers often add garlic bread with pizza. Would you like to add it?";
+        }
+
+        res.json({
+            order: parsed,
+            upsell: upsell
+        });
 
     } catch (error) {
         console.error(error.message);
