@@ -87,8 +87,7 @@ const orderSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-orderSchema.index({ "items.product_id": 1 }); // this is used for efficient querying of orders by product_id
-orderSchema.index({ order_id: 1 }, { unique: true });
+orderSchema.index({ "items.product_id": 1 });
 
 
 module.exports = mongoose.model("Order", orderSchema);
