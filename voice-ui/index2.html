@@ -15,12 +15,14 @@
     <pre id="result"></pre>
 
     <script>
+
         let sessionId = localStorage.getItem("sessionId");
 
         if (!sessionId) {
             sessionId = crypto.randomUUID();
             localStorage.setItem("sessionId", sessionId);
         }
+
         const recognition = new webkitSpeechRecognition();
         recognition.continuous = false;
         recognition.lang = "en-IN";
@@ -28,19 +30,68 @@
         let currentOrder = null;
         let pendingUpsell = null;
 
+        let aiSpeaking = false;
+        let micActive = false;
+
+
+        // ========================
+        // MIC EVENTS
+        // ========================
+
+        recognition.onstart = () => {
+            micActive = true;
+            console.log("🎤 Listening...");
+        };
+
+        recognition.onend = () => {
+            micActive = false;
+            console.log("Mic stopped");
+        };
+
+        recognition.onerror = (e) => {
+            console.log("Speech error:", e.error);
+        };
+
+
+        // ========================
+        // START MIC
+        // ========================
+
         function startListening() {
-            recognition.start();
+
+            if (micActive) return;
+
+            try {
+                recognition.start();
+            }
+            catch (e) {
+                console.log("Mic already running");
+            }
+
         }
+
+
+        // ========================
+        // SPEECH RESULT
+        // ========================
 
         recognition.onresult = async (event) => {
 
+            if (aiSpeaking) return;
+
             const text = event.results[0][0].transcript.toLowerCase();
+
             document.getElementById("speech").innerText = "You said: " + text;
 
             const confirmationWords = ["yes", "yeah", "yep", "sure", "ok", "okay"];
+
             const isConfirm = confirmationWords.some(word => text.includes(word));
 
-            // HANDLE UPSELL CONFIRMATION
+
+            // ========================
+            // HANDLE UPSELL CONFIRM
+            // ========================
+
             if (pendingUpsell && isConfirm) {
 
                 recognition.stop();
@@ -60,25 +111,36 @@
                     JSON.stringify(currentOrder, null, 2);
 
                 return;
+
             }
 
-            // OTHERWISE PROCESS NEW ORDER
+
+            // ========================
+            // SEND ORDER TO BACKEND
+            // ========================
+
             const response = await fetch("http://localhost:3001/parse-order", {
+
                 method: "POST",
+
                 headers: {
                     "Content-Type": "application/json"
                 },
+
                 body: JSON.stringify({
                     sessionId,
                     text
                 })
+
             });
 
             const data = await response.json();
 
+
             if (data.completed) {
                 window.orderCompleted = true;
             }
+
 
             if (data.clarification) {
 
@@ -90,42 +152,85 @@
                 return;
             }
 
+
             currentOrder = data.order;
+
 
             const items = data.order.items.map(
                 item => `${item.quantity} ${item.name}`
             ).join(", ");
 
+
             let message = `You ordered ${items}.`;
 
+
             if (data.upsell) {
+
                 message += " " + data.upsell;
+
                 pendingUpsell = data.upsellProduct;
+
             }
+
+
+            if (data.message) {
+                message = data.message;
+            }
+
 
             speak(message);
 
+
             document.getElementById("result").innerText =
                 JSON.stringify(data, null, 2);
+
         };
 
-        function speak(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = "en-IN";
 
-            msg.onend = () => {
 
-                // Stop listening if order finished
-                if (window.orderCompleted) {
-                    console.log("Order completed. Mic stopped.");
-                    return;
-                }
+        // ========================
+        // SARVAM TTS SPEAK
+        // ========================
 
-                recognition.start();
+        async function speak(text) {
+
+            aiSpeaking = true;
+
+            if (micActive) {
+                recognition.stop();
+            }
+
+            const response = await fetch("http://localhost:3001/tts", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({ text })
+
+            });
+
+            const data = await response.json();
+
+            const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
+
+            audio.play();
+
+
+            audio.onended = () => {
+
+                aiSpeaking = false;
+
+                if (window.orderCompleted) return;
+
+                setTimeout(() => {
+                    startListening();
+                }, 300);
+
             };
 
-            speechSynthesis.cancel();
-            speechSynthesis.speak(msg);
         }
 
     </script>
