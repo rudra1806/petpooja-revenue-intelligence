@@ -13,7 +13,12 @@
 <pre id="result"></pre>
 
 <script>
+    let sessionId = localStorage.getItem("sessionId");
 
+if(!sessionId){
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("sessionId", sessionId);
+}
     const recognition = new webkitSpeechRecognition();
     recognition.continuous = false;
     recognition.lang = "en-IN";
@@ -61,7 +66,10 @@
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ text })
+           body: JSON.stringify({
+    sessionId,
+    text
+})
         });
 
         const data = await response.json();

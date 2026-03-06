@@ -1,0 +1,59 @@
+const axios = require("axios");
+
+async function parseOrderWithAI(text, products){
+
+    try{
+
+        const menu = products.map(p => p.name).join(", ");
+
+        const prompt = `
+You are a food ordering AI.
+
+Menu:
+${menu}
+
+User said:
+"${text}"
+
+Return JSON only in this format:
+{
+ "items":[
+   {
+     "name":"product name",
+     "quantity":1,
+     "modifiers":[]
+   }
+ ]
+}
+`;
+
+        const response = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+            {
+                contents: [
+                    {
+                        parts: [{ text: prompt }]
+                    }
+                ]
+            }
+        );
+
+        const aiText = response.data.candidates[0].content.parts[0].text;
+
+        return JSON.parse(aiText);
+
+    }
+    catch(error){
+
+        console.log("❌ Gemini API failed");
+
+        if(error.response){
+            console.log("Status:", error.response.status);
+            console.log("Data:", error.response.data);
+        }
+
+        return null;   // important fallback
+    }
+}
+
+module.exports = parseOrderWithAI;
