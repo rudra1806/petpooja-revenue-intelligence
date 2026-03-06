@@ -22,6 +22,10 @@ const comboSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    description: {
+        type: String,
+        default: "",
+    },
     items: [comboItemSchema],
     total_selling_price: {
         type: Number,
