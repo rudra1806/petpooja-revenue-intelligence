@@ -17,6 +17,11 @@ const sessionSchema = new mongoose.Schema({
         default: null
     },
 
+    pending_clarification: {
+        type: Array,
+        default: null
+    },
+
     last_question: {
         type: String,
         default: null

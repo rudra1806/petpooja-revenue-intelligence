@@ -1,116 +1,135 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Restaurant Voice Assistant</title>
 </head>
+
 <body>
 
-<h2>🎤 Restaurant Voice Assistant</h2>
+    <h2>🎤 Restaurant Voice Assistant</h2>
 
-<button onclick="startListening()">Speak Order</button>
+    <button onclick="startListening()">Speak Order</button>
 
-<p id="speech"></p>
-<pre id="result"></pre>
+    <p id="speech"></p>
+    <pre id="result"></pre>
 
-<script>
-    let sessionId = localStorage.getItem("sessionId");
+    <script>
+        let sessionId = localStorage.getItem("sessionId");
 
-if(!sessionId){
-    sessionId = crypto.randomUUID();
-    localStorage.setItem("sessionId", sessionId);
-}
-    const recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.lang = "en-IN";
+        if (!sessionId) {
+            sessionId = crypto.randomUUID();
+            localStorage.setItem("sessionId", sessionId);
+        }
+        const recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.lang = "en-IN";
 
-    let currentOrder = null;
-    let pendingUpsell = null;
+        let currentOrder = null;
+        let pendingUpsell = null;
 
-    function startListening() {
-        recognition.start();
-    }
+        function startListening() {
+            recognition.start();
+        }
 
-    recognition.onresult = async (event) => {
+        recognition.onresult = async (event) => {
 
-        const text = event.results[0][0].transcript.toLowerCase();
-        document.getElementById("speech").innerText = "You said: " + text;
+            const text = event.results[0][0].transcript.toLowerCase();
+            document.getElementById("speech").innerText = "You said: " + text;
 
-        const confirmationWords = ["yes", "yeah", "yep", "sure", "ok", "okay"];
-        const isConfirm = confirmationWords.some(word => text.includes(word));
+            const confirmationWords = ["yes", "yeah", "yep", "sure", "ok", "okay"];
+            const isConfirm = confirmationWords.some(word => text.includes(word));
 
-        // HANDLE UPSELL CONFIRMATION
-        if (pendingUpsell && isConfirm) {
+            // HANDLE UPSELL CONFIRMATION
+            if (pendingUpsell && isConfirm) {
 
-            recognition.stop();
+                recognition.stop();
 
-            currentOrder.items.push({
-                product_id: pendingUpsell.product_id,
-                name: pendingUpsell.name,
-                quantity: 1,
-                selected_modifiers: []
+                currentOrder.items.push({
+                    product_id: pendingUpsell.product_id,
+                    name: pendingUpsell.name,
+                    quantity: 1,
+                    selected_modifiers: []
+                });
+
+                speak(`Great! I have added ${pendingUpsell.name} to your order.`);
+
+                pendingUpsell = null;
+
+                document.getElementById("result").innerText =
+                    JSON.stringify(currentOrder, null, 2);
+
+                return;
+            }
+
+            // OTHERWISE PROCESS NEW ORDER
+            const response = await fetch("http://localhost:3001/parse-order", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    sessionId,
+                    text
+                })
             });
 
-            speak(`Great! I have added ${pendingUpsell.name} to your order.`);
+            const data = await response.json();
 
-            pendingUpsell = null;
+            if (data.completed) {
+                window.orderCompleted = true;
+            }
+
+            if (data.clarification) {
+
+                speak(data.clarification);
+
+                document.getElementById("result").innerText =
+                    data.clarification;
+
+                return;
+            }
+
+            currentOrder = data.order;
+
+            const items = data.order.items.map(
+                item => `${item.quantity} ${item.name}`
+            ).join(", ");
+
+            let message = `You ordered ${items}.`;
+
+            if (data.upsell) {
+                message += " " + data.upsell;
+                pendingUpsell = data.upsellProduct;
+            }
+
+            speak(message);
 
             document.getElementById("result").innerText =
-                JSON.stringify(currentOrder, null, 2);
-
-            return;
-        }
-
-        // OTHERWISE PROCESS NEW ORDER
-        const response = await fetch("http://localhost:3001/parse-order", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-           body: JSON.stringify({
-    sessionId,
-    text
-})
-        });
-
-        const data = await response.json();
-
-        if (data.clarification) {
-            speak(data.clarification);
-            return;
-        }
-
-        currentOrder = data.order;
-
-        const items = data.order.items.map(
-            item => `${item.quantity} ${item.name}`
-        ).join(", ");
-
-        let message = `You ordered ${items}.`;
-
-        if (data.upsell) {
-            message += " " + data.upsell;
-            pendingUpsell = data.upsellProduct;
-        }
-
-        speak(message);
-
-        document.getElementById("result").innerText =
-            JSON.stringify(data, null, 2);
-    };
-
-    function speak(text) {
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = "en-IN";
-
-        msg.onend = () => {
-            recognition.start();
+                JSON.stringify(data, null, 2);
         };
 
-        speechSynthesis.cancel();
-        speechSynthesis.speak(msg);
-    }
+        function speak(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = "en-IN";
 
-</script>
+            msg.onend = () => {
+
+                // Stop listening if order finished
+                if (window.orderCompleted) {
+                    console.log("Order completed. Mic stopped.");
+                    return;
+                }
+
+                recognition.start();
+            };
+
+            speechSynthesis.cancel();
+            speechSynthesis.speak(msg);
+        }
+
+    </script>
 
 </body>
+
 </html>

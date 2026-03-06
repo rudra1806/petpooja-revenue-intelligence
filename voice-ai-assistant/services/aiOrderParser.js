@@ -1,8 +1,72 @@
+// const axios = require("axios");
+
+// async function parseOrderWithAI(text, products){
+
+//     try{
+
+//         const menu = products.map(p => p.name).join(", ");
+
+//         const prompt = `
+// You are a food ordering AI.
+
+// Menu:
+// ${menu}
+
+// User said:
+// "${text}"
+
+// Return JSON only in this format:
+// {
+//  "items":[
+//    {
+//      "name":"product name",
+//      "quantity":1,
+//      "modifiers":[]
+//    }
+//  ]
+// }
+// `;
+
+//         const response = await axios.post(
+//             `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+//             {
+//                 contents: [
+//                     {
+//                         parts: [{ text: prompt }]
+//                     }
+//                 ]
+//             }
+//         );
+
+//         const aiText = response.data.candidates[0].content.parts[0].text;
+
+//         return JSON.parse(aiText);
+
+//     }
+//     catch(error){
+
+//         console.log("❌ Gemini API failed");
+
+//         if(error.response){
+//             console.log("Status:", error.response.status);
+//             console.log("Data:", error.response.data);
+//         }
+
+//         return null;   // important fallback
+//     }
+// }
+
+// module.exports = parseOrderWithAI;
+
+
+
+
+
 const axios = require("axios");
 
-async function parseOrderWithAI(text, products){
+async function parseOrderWithAI(text, products) {
 
-    try{
+    try {
 
         const menu = products.map(p => p.name).join(", ");
 
@@ -16,6 +80,7 @@ User said:
 "${text}"
 
 Return JSON only in this format:
+
 {
  "items":[
    {
@@ -28,31 +93,38 @@ Return JSON only in this format:
 `;
 
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+            "http://localhost:1234/v1/chat/completions",
             {
-                contents: [
+                model: "meta-llama-3.1-8b-instruct",
+                messages: [
                     {
-                        parts: [{ text: prompt }]
+                        role: "system",
+                        content: "You are a restaurant order parser."
+                    },
+                    {
+                        role: "user",
+                        content: prompt
                     }
-                ]
+                ],
+                temperature: 0.1
             }
         );
 
-        const aiText = response.data.candidates[0].content.parts[0].text;
+        const aiText = response.data.choices[0].message.content;
 
         return JSON.parse(aiText);
 
     }
-    catch(error){
+    catch (error) {
 
-        console.log("❌ Gemini API failed");
+        console.log("❌ LM Studio parsing failed");
 
-        if(error.response){
+        if (error.response) {
             console.log("Status:", error.response.status);
             console.log("Data:", error.response.data);
         }
 
-        return null;   // important fallback
+        return null;   // fallback to Fuse logic
     }
 }
 
