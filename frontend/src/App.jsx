@@ -5,7 +5,7 @@ import ComboGenerator from './pages/ComboGenerator'
 import SuggestView from './pages/SuggestView'
 import ManageCombos from './pages/ManageCombos'
 
-const API_BASE = 'http://localhost:3001/api'
+const API_BASE = 'http://localhost:3000/api'
 
 const NAV_ITEMS = [
   { id: 'products', label: 'Analytics' },
