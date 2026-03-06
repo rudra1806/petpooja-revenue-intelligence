@@ -223,11 +223,11 @@ The frontend runs on `http://localhost:5173` and calls the backend at `http://lo
 
    **Margin (absolute):**
 
-   $$\text{Margin} = \text{selling\_price} - \text{cost}$$
+   $$Margin = sellingPrice - cost$$
 
    **Margin Percentage:**
 
-   $$\text{Margin\%} = \frac{\text{selling\_price} - \text{cost}}{\text{selling\_price}} \times 100$$
+   $$Margin\% = \frac{sellingPrice - cost}{sellingPrice} \times 100$$
 
    **Order Frequency** — how often the product appears across orders:
 
@@ -235,7 +235,7 @@ The frontend runs on `http://localhost:5173` and calls the backend at `http://lo
 
    **Revenue Share** — the product's contribution to total revenue:
 
-   $$\text{Revenue Share} = \frac{\text{product\_revenue}}{\text{total\_revenue}} \times 100$$
+   $$RevenueShare = \frac{productRevenue}{totalRevenue} \times 100$$
 
 3. **Classify** into the BCG-inspired profitability matrix (see [Product Classification Matrix](#product-classification-matrix)).
 
@@ -368,15 +368,15 @@ $$\text{ComboScore} = 0.30 \times 0.3 + 0.25 \times \min(1, \text{profitMargin})
 
 **Combo Margin:**
 
-$$\text{comboMargin} = \text{combo\_price} - \sum(\text{item costs})$$
+$$comboMargin = comboPrice - \sum(itemCosts)$$
 
-$$\text{comboMarginPct} = \frac{\text{comboMargin}}{\text{combo\_price}} \times 100$$
+$$comboMarginPct = \frac{comboMargin}{comboPrice} \times 100$$
 
 **Customer Savings:**
 
-$$\text{savings} = \text{total\_selling\_price} - \text{combo\_price}$$
+$$savings = totalSellingPrice - comboPrice$$
 
-$$\text{savingsPct} = \frac{\text{savings}}{\text{total\_selling\_price}} \times 100$$
+$$savingsPct = \frac{savings}{totalSellingPrice} \times 100$$
 
 **Full Combo Order Rate** — how often all combo items appear together naturally in orders:
 
@@ -426,7 +426,7 @@ $$\text{fullComboRate} = \frac{\text{orders containing ALL combo items}}{\text{t
 
    **Margin Percentage:**
 
-   $$\text{marginPct} = \frac{\text{selling\_price} - \text{cost}}{\text{selling\_price}}$$
+   $$marginPct = \frac{sellingPrice - cost}{sellingPrice}$$
 
 3. **Upsell Priority Score:**
 
@@ -507,7 +507,7 @@ $$S_{ij} = \begin{cases} \text{COMPATIBILITY}[\text{cat}_i][\text{cat}_j] & \tex
 | 1 | $\text{Margin} = \text{price} - \text{cost}$ | Product Analytics |
 | 2 | $\text{Margin\%} = \frac{\text{price} - \text{cost}}{\text{price}} \times 100$ | Product Analytics |
 | 3 | $\text{Order Frequency} = \frac{\text{orderCount}}{\text{totalOrders}}$ | Product Analytics |
-| 4 | $\text{Revenue Share} = \frac{\text{product\_revenue}}{\text{total\_revenue}} \times 100$ | Product Analytics |
+| 4 | $RevenueShare = \frac{productRevenue}{totalRevenue} \times 100$ | Product Analytics |
 | 5 | $\text{Support}(A,B) = \frac{\text{pairFreq}(A,B)}{\text{totalOrders}}$ | Association Mining |
 | 6 | $\text{Confidence}(A \to B) = \frac{\text{pairFreq}(A,B)}{\text{freq}(A)}$ | Association Mining |
 | 7 | $\text{Lift}(A,B) = \frac{\text{Support}(A,B)}{P(A) \times P(B)}$ | Association Mining |
