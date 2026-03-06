@@ -104,7 +104,34 @@ export default function ProductAnalytics({ apiBase }) {
 
             if (json.success) {
                 setIsEditModalOpen(false)
+<<<<<<< HEAD
                 fetchData()
+=======
+                // Patch only the edited row in local state — no full reload
+                const newSelling = Number(editForm.selling_price)
+                const newCost = Number(editForm.cost)
+                const newMargin = newSelling - newCost
+                const newMarginPct = newSelling > 0
+                    ? parseFloat(((newMargin / newSelling) * 100).toFixed(1))
+                    : 0
+                setData(prev => ({
+                    ...prev,
+                    data: prev.data.map(p =>
+                        p.product_id === editingProduct.product_id
+                            ? {
+                                ...p,
+                                name: editForm.name,
+                                category: editForm.category,
+                                selling_price: newSelling,
+                                cost: newCost,
+                                description: editForm.description,
+                                margin: newMargin,
+                                margin_pct: newMarginPct,
+                            }
+                            : p
+                    )
+                }))
+>>>>>>> 735fc33a3ef026984823929fad0408d575601243
             } else {
                 setEditError(json.message || 'Failed to update product')
             }
@@ -121,7 +148,16 @@ export default function ProductAnalytics({ apiBase }) {
             const res = await fetch(`${apiBase}/product/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (json.success) {
+<<<<<<< HEAD
                 fetchData();
+=======
+                // Remove the deleted row from local state — no full reload
+                setData(prev => ({
+                    ...prev,
+                    total_products: prev.total_products - 1,
+                    data: prev.data.filter(p => p.product_id !== id)
+                }))
+>>>>>>> 735fc33a3ef026984823929fad0408d575601243
             } else {
                 alert(json.message || 'Failed to delete product');
             }
@@ -450,6 +486,7 @@ export default function ProductAnalytics({ apiBase }) {
                 </div>
             )}
 
+<<<<<<< HEAD
             {/* EDIT PRODUCT MODAL */}
             {isEditModalOpen && (
                 <div className="modal-overlay" onClick={() => !isSubmitting && setIsEditModalOpen(false)}>
@@ -540,6 +577,9 @@ export default function ProductAnalytics({ apiBase }) {
                     </div>
                 </div>
             )}
+=======
+
+>>>>>>> 735fc33a3ef026984823929fad0408d575601243
         </>
     )
 }

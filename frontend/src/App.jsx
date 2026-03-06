@@ -19,8 +19,18 @@ const NAV_ITEMS = [
   { id: 'orders', label: 'Orders' },
 ]
 
+function getTabFromHash() {
+  const hash = window.location.hash.replace('#', '')
+  return NAV_ITEMS.some(n => n.id === hash) ? hash : 'products'
+}
+
 function App() {
-  const [activeTab, setActiveTab] = useState('products')
+  const [activeTab, setActiveTab] = useState(getTabFromHash)
+
+  const navigate = (id) => {
+    window.location.hash = id
+    setActiveTab(id)
+  }
 
   return (
     <div className="app">
@@ -34,7 +44,7 @@ function App() {
             <button
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => navigate(item.id)}
             >
               {item.label}
             </button>

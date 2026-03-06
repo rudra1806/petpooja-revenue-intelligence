@@ -128,6 +128,8 @@ async function computeProductAnalytics() {
             order_frequency: parseFloat(orderFrequency.toFixed(3)),
             revenue_share: parseFloat(revenueShare.toFixed(2)),
             classification,
+            max_discount_pct: p.max_discount_pct ?? null,   // from pricing dashboard
+            suggested_price: p.suggested_price ?? null,     // from pricing dashboard
         };
     });
 
@@ -782,6 +784,7 @@ const getPricingRecommendations = async (req, res) => {
             return s + stats;
         }, 0);
 
+<<<<<<< HEAD
         // Owner's minimum acceptable profit margin — discounts/prices are capped
         // so the product never drops below this threshold
         const MIN_ACCEPTABLE_MARGIN = 20; // 20%
@@ -821,12 +824,21 @@ const getPricingRecommendations = async (req, res) => {
                 strategy: "Clear or revive — aggressive discounts to move inventory, or reduce price to attract attention. Consider bundling.",
             },
         };
+=======
+        // ─── MARGIN-VS-DEMAND TRADEOFF THRESHOLDS ────────────────────────
+        // MIN_ACCEPTABLE_MARGIN: the hard floor — we never price below this.
+        // REMOVAL_MARGIN_THRESHOLD: if margin is ALSO below this, suggest removal.
+        // These are expressed as percentages of selling price.
+        const MIN_ACCEPTABLE_MARGIN = 30;    // 30% — hard price floor
+        const REMOVAL_MARGIN_THRESHOLD = 30; // if margin < 30% AND demand is low → suggest removal
+>>>>>>> 735fc33a3ef026984823929fad0408d575601243
 
         // ─── COMPUTE RECOMMENDATIONS FOR EACH PRODUCT ─────────────────
         const recommendations = productAnalytics.map(pa => {
             const product = productMap[pa.product_id.toString()];
             if (!product) return null;
 
+<<<<<<< HEAD
             // Get the pricing rules for this product's BCG quadrant
             const rules = QUADRANT_RULES[pa.classification] || QUADRANT_RULES.dog;
 
@@ -880,6 +892,98 @@ const getPricingRecommendations = async (req, res) => {
 
             // Safety: never suggest a price below the floor
             const finalSuggestedPrice = Math.max(suggestedPrice, minPrice);
+=======
+            // ── Normalized inputs (all 0–1) ──────────────────────────────
+            // demandNorm:   how frequently this product appears in orders
+            // headroomNorm: how much margin buffer exists above the 30% floor
+            const demandScore = Math.min(100, parseFloat((pa.order_frequency * 100 * 2).toFixed(1)));
+            const demandNorm = demandScore / 100;
+            const marginHeadroom = Math.max(0, pa.margin_pct - MIN_ACCEPTABLE_MARGIN);
+            const headroomNorm = Math.min(1, marginHeadroom / 50); // 50% headroom = fully saturated
+            const revenueContribution = pa.revenue_share;
+
+            // ── REMOVAL FLAG (Dog quadrant: low margin + low demand) ─────
+            // If a product has both thin margins AND poor sales, it is a drag
+            // on the menu. We flag it for potential removal rather than just
+            // cutting the price further (which only worsens margin).
+            const isDog = pa.classification === "dog";
+            const shouldRemove = isDog && pa.margin_pct < REMOVAL_MARGIN_THRESHOLD;
+            const removeReason = shouldRemove
+                ? `Margin is ${pa.margin_pct.toFixed(1)}% (below ${REMOVAL_MARGIN_THRESHOLD}% threshold) and demand is very low (score: ${demandScore}). Keeping this item hurts overall profitability.`
+                : null;
+
+            // ── PRICE ADJUSTMENT ─────────────────────────────────────────
+            // Core logic: tradeoff between margin room and demand pressure.
+            //
+            //  STAR        (high margin, high demand)  → increase price
+            //              More demand = bolder increase. Cap: +12%
+            //
+            //  HIDDEN GEM  (high margin, low demand)   → discount to drive sales
+            //              Lower demand = bigger discount (FIXED direction).
+            //              Headroom limits how deep we can go safely. Cap: -15%
+            //
+            //  VOLUME TRAP (low margin, high demand)   → increase price to recover margin
+            //              Thinner margin = more urgent increase. Cap: +15%
+            //
+            //  DOG         (low margin, low demand)    → suggest removal if margin < threshold
+            //              If still kept, a mild price cut is suggested to test demand.
+            let priceAdjustPct;
+            let strategy;
+            let maxDiscountCap;
+
+            if (pa.classification === "star") {
+                // Higher demand and/or headroom → bolder increase (2% base + up to 12%)
+                priceAdjustPct = 2 + demandNorm * 10 + headroomNorm * 2;
+                priceAdjustPct = Math.min(priceAdjustPct, 14);       // hard cap +14%
+                maxDiscountCap = 8;                                    // stars rarely need discounts
+                strategy = "Premium pricing — strong demand supports a price increase. Keep discounts minimal.";
+
+            } else if (pa.classification === "hidden_gem") {
+                // TRADEOFF: high margin gives room to discount; low demand = bigger cut needed.
+                // discount % = headroom × (1 - demandNorm)
+                // → very low demand + high headroom → maximum discount
+                // → higher demand → smaller discount (already selling somewhat)
+                const discountStrength = headroomNorm * (1 - demandNorm); // 0–1
+                priceAdjustPct = -(discountStrength * 15);               // up to -15%
+                priceAdjustPct = Math.max(priceAdjustPct, -15);          // floor at -15%
+                maxDiscountCap = Math.min(marginHeadroom, 25);           // can't go below 30% margin
+                strategy = `Boost sales — this product has strong margins (${pa.margin_pct.toFixed(1)}%) but low demand (score: ${demandScore}). Offering a discount of up to ${maxDiscountCap.toFixed(1)}% will drive discovery without hurting profitability.`;
+
+            } else if (pa.classification === "volume_trap") {
+                // High demand but thin margin → must recover margin via price increase.
+                // Lower margin = more urgent increase.
+                const marginDeficit = Math.max(0, (50 - pa.margin_pct) / 50); // how far below 50%
+                priceAdjustPct = 5 + marginDeficit * 10;                // +5% to +15%
+                priceAdjustPct = Math.min(priceAdjustPct, 15);
+                maxDiscountCap = 3;                                      // almost no discounts
+                strategy = `Margin recovery — customers love this product (demand: ${demandScore}) but margins are thin at ${pa.margin_pct.toFixed(1)}%. A price increase is needed to stay profitable.`;
+
+            } else {
+                // DOG: low margin + low demand
+                if (shouldRemove) {
+                    // Below margin threshold → suggest removal, no price adjustment
+                    priceAdjustPct = 0;
+                    maxDiscountCap = 0;
+                    strategy = `Consider removing — margin (${pa.margin_pct.toFixed(1)}%) is below your ${REMOVAL_MARGIN_THRESHOLD}% threshold and demand is very low. This item is reducing your overall profitability.`;
+                } else {
+                    // Margin is above threshold but demand is still weak → mild cut to test demand
+                    const cutStrength = (1 - demandNorm);               // low demand = bigger cut
+                    priceAdjustPct = -(cutStrength * 8);                // up to -8%
+                    priceAdjustPct = Math.max(priceAdjustPct, -8);
+                    maxDiscountCap = Math.min(marginHeadroom, 15);
+                    strategy = `Test demand — low sales but margins are still above threshold. A moderate price reduction may revive interest. If sales don't improve, consider removing from the menu.`;
+                }
+            }
+
+            priceAdjustPct = parseFloat(priceAdjustPct.toFixed(1));
+
+            // ── Apply adjustment + safety floor ─────────────────────────
+            // minPrice ensures we never price below the 30% margin floor.
+            const suggestedPrice = Math.round(product.selling_price * (1 + priceAdjustPct / 100));
+            const minPrice = Math.round(product.cost / (1 - MIN_ACCEPTABLE_MARGIN / 100));
+            const finalSuggestedPrice = Math.max(suggestedPrice, minPrice);
+            const maxDiscountPct = Math.min(marginHeadroom, maxDiscountCap);
+>>>>>>> 735fc33a3ef026984823929fad0408d575601243
 
             return {
                 product_id: pa.product_id,
@@ -900,7 +1004,13 @@ const getPricingRecommendations = async (req, res) => {
                 units_sold: pa.units_sold,
                 order_frequency: pa.order_frequency,
                 classification: pa.classification,
+<<<<<<< HEAD
                 strategy: rules.strategy,
+=======
+                strategy,
+                should_remove: shouldRemove,
+                remove_reason: removeReason,
+>>>>>>> 735fc33a3ef026984823929fad0408d575601243
             };
         }).filter(Boolean);
 
@@ -922,6 +1032,10 @@ const getPricingRecommendations = async (req, res) => {
                 products_to_increase: recommendations.filter(r => r.price_change_amt > 0).length,
                 products_to_decrease: recommendations.filter(r => r.price_change_amt < 0).length,
                 products_no_change: recommendations.filter(r => r.price_change_amt === 0).length,
+<<<<<<< HEAD
+=======
+                products_to_remove: recommendations.filter(r => r.should_remove).length,
+>>>>>>> 735fc33a3ef026984823929fad0408d575601243
             },
             data: recommendations,
         });

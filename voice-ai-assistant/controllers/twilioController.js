@@ -11,16 +11,13 @@ const { parseOrder } = require("./orderController");
 // 1. INCOMING CALL  — Twilio hits this webhook
 // ─────────────────────────────────────────────
 exports.handleIncomingCall = async (req, res) => {
-    const twiml = new VoiceResponse();
-    const greeting = "Welcome to our restaurant! What would you like to order? You can say things like, two burgers and a coke.";
+    console.log("📞 Incoming call from:", req.body.From);
 
-    // Use Sarvam for the greeting
+    const twiml = new VoiceResponse();
+    const greeting = "Welcome to our restaurant! What would you like to order?";
+
+    // Try Sarvam TTS, fall back to basic Say
     const audioUrl = await generateTwilioAudio(greeting, req);
-    if (audioUrl) {
-        twiml.play(audioUrl);
-    } else {
-        twiml.say({ voice: "Polly.Aditi", language: "en-IN" }, greeting);
-    }
 
     const gather = twiml.gather({
         input: "speech",
@@ -30,15 +27,17 @@ exports.handleIncomingCall = async (req, res) => {
         method: "POST"
     });
 
-    const prompt = "Please tell me your order.";
-    const promptUrl = await generateTwilioAudio(prompt, req);
-    if (promptUrl) {
-        gather.play(promptUrl);
+    if (audioUrl) {
+        gather.play(audioUrl);
     } else {
-        gather.say({ voice: "Polly.Aditi", language: "en-IN" }, prompt);
+        gather.say({ language: "en-IN" }, greeting);
     }
 
+    // If no speech detected, loop back
+    twiml.say({ language: "en-IN" }, "I didn't hear anything. Let me try again.");
     twiml.redirect("/twilio/voice");
+
+    console.log("📞 TwiML response:", twiml.toString());
 
     res.type("text/xml");
     res.send(twiml.toString());
@@ -56,12 +55,7 @@ exports.handleGather = async (req, res) => {
 
     if (!speechResult) {
         const twiml = new VoiceResponse();
-        const msg = "Sorry, I didn't catch that. Please try again.";
-        const audioUrl = await generateTwilioAudio(msg, req);
-
-        if (audioUrl) twiml.play(audioUrl);
-        else twiml.say({ voice: "Polly.Aditi", language: "en-IN" }, msg);
-
+        twiml.say({ language: "en-IN" }, "Sorry, I didn't catch that. Please try again.");
         twiml.redirect("/twilio/voice");
         res.type("text/xml");
         return res.send(twiml.toString());
@@ -77,22 +71,18 @@ exports.handleGather = async (req, res) => {
             || orderResponse.clarification
             || "I'm not sure what you said. Could you try again?";
 
-        const audioUrl = await generateTwilioAudio(message, req);
-        if (audioUrl) twiml.play(audioUrl);
-        else twiml.say({ voice: "Polly.Aditi", language: "en-IN" }, message);
+        console.log(`📞 Responding: "${message}"`);
 
         if (orderResponse.completed) {
-            const byeArr = "Thank you for your order! Goodbye.";
-            const byeUrl = await generateTwilioAudio(byeArr, req);
-            if (byeUrl) twiml.play(byeUrl);
-            else twiml.say({ voice: "Polly.Aditi", language: "en-IN" }, byeArr);
+            // Order complete — speak confirmation and hang up
+            const fullMsg = message + " Thank you for your order! Goodbye.";
+            const audioUrl = await generateTwilioAudio(fullMsg, req);
+            if (audioUrl) twiml.play(audioUrl);
+            else twiml.say({ language: "en-IN" }, fullMsg);
             twiml.hangup();
         } else {
-            if (orderResponse.upsell) {
-                const upsellUrl = await generateTwilioAudio(orderResponse.upsell, req);
-                if (upsellUrl) twiml.play(upsellUrl);
-                else twiml.say({ voice: "Polly.Aditi", language: "en-IN" }, orderResponse.upsell);
-            }
+            // Speak the response inside a Gather so we can listen for next input
+            const audioUrl = await generateTwilioAudio(message, req);
 
             const gather = twiml.gather({
                 input: "speech",
@@ -102,11 +92,14 @@ exports.handleGather = async (req, res) => {
                 method: "POST"
             });
 
-            const nextPrompt = "What else would you like? Or say confirm to place your order.";
-            const nextPromptUrl = await generateTwilioAudio(nextPrompt, req);
-            if (nextPromptUrl) gather.play(nextPromptUrl);
-            else gather.say({ voice: "Polly.Aditi", language: "en-IN" }, nextPrompt);
+            if (audioUrl) {
+                gather.play(audioUrl);
+            } else {
+                gather.say({ language: "en-IN" }, message);
+            }
 
+            // If no speech, loop back
+            twiml.say({ language: "en-IN" }, "I didn't hear anything.");
             twiml.redirect("/twilio/voice");
         }
 
@@ -115,7 +108,7 @@ exports.handleGather = async (req, res) => {
     } catch (error) {
         console.error("❌ Twilio gather error:", error);
         const twiml = new VoiceResponse();
-        twiml.say({ voice: "Polly.Aditi", language: "en-IN" }, "Sorry, something went wrong. Please try again.");
+        twiml.say({ language: "en-IN" }, "Sorry, something went wrong. Please try again.");
         twiml.redirect("/twilio/voice");
         res.type("text/xml");
         res.send(twiml.toString());
@@ -143,8 +136,7 @@ async function generateTwilioAudio(text, req) {
         fs.writeFileSync(filePath, Buffer.from(base64Audio, "base64"));
 
         // Construct the URL. Twilio needs the full public URL (ngrok).
-        // req.headers.host will be the ngrok URL when accessed through it.
-        const protocol = req.headers['x-forwarded-proto'] || 'http';
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
         return `${protocol}://${req.headers.host}/audio/${fileName}`;
     } catch (error) {
         console.error("❌ Error generating Sarvam audio file:", error);
@@ -166,4 +158,3 @@ function callParseOrder(text, sessionId) {
         parseOrder(fakeReq, fakeRes).catch(reject);
     });
 }
-

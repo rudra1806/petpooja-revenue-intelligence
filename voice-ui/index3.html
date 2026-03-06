@@ -116,7 +116,7 @@ recognition.onresult = async (event) => {
     // SEND ORDER TO BACKEND
     // ========================
 
-    const response = await fetch("http://localhost:3001/parse-order", {
+    const response = await fetch("http://localhost:3002/parse-order", {
 
         method: "POST",
 
@@ -212,7 +212,7 @@ async function speak(text) {
         recognition.stop();
     }
 
-    const response = await fetch("http://localhost:3001/tts", {
+    const response = await fetch("http://localhost:3002/tts", {
 
         method: "POST",
 

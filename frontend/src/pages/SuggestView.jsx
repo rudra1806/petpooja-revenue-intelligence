@@ -55,9 +55,15 @@ export default function SuggestView({ apiBase }) {
     const openCreateCombo = () => {
         if (!suggestions) return
         const baseProduct = suggestions.product
+
+        // Build item list — include the base product and all picked suggestions
         const allItems = [
             { product_id: baseProduct._id, name: baseProduct.name, quantity: 1, base_price: baseProduct.selling_price }
         ]
+
+        // Map products by id for quick lookup of max_discount_pct
+        const productMap = {}
+        for (const p of products) productMap[String(p.product_id)] = p
 
         for (const s of suggestions.individual_suggestions) {
             if (pickedItems.has(s.product_id)) {
@@ -66,7 +72,17 @@ export default function SuggestView({ apiBase }) {
         }
 
         const totalSelling = allItems.reduce((sum, i) => sum + i.base_price, 0)
-        const discount = Math.round(totalSelling * 0.10)
+
+        // ── DATA-DRIVEN DISCOUNT ──────────────────────────────────────────────
+        // Average max_discount_pct across all items in this custom combo.
+        // Fall back to 10% per item if not yet set via Pricing Dashboard.
+        // Cap at 15% to prevent over-discounting (matches backend logic).
+        const avgMaxDiscount = allItems.reduce((sum, item) => {
+            const p = productMap[String(item.product_id)]
+            return sum + (p?.max_discount_pct != null ? p.max_discount_pct : 10)
+        }, 0) / allItems.length
+        const discountPct = Math.min(avgMaxDiscount, 15) / 100
+        const discount = Math.round(totalSelling * discountPct)
         const comboPrice = totalSelling - discount
 
         setComboForm({
@@ -352,7 +368,18 @@ export default function SuggestView({ apiBase }) {
 
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>Discount ({'\u20B9'})</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        Discount ({'₹'})
+                                        {comboForm.total_selling_price > 0 && (
+                                            <span style={{
+                                                fontSize: 10, padding: '2px 7px', borderRadius: 'var(--radius-sm)',
+                                                background: 'var(--accent-subtle)', color: 'var(--accent-text)',
+                                                fontWeight: 600, letterSpacing: '0.3px'
+                                            }}>
+                                                {((comboForm.discount / comboForm.total_selling_price) * 100).toFixed(1)}% auto
+                                            </span>
+                                        )}
+                                    </label>
                                     <input type="number" value={comboForm.discount} onChange={e => handleFormChange('discount', e.target.value)} />
                                 </div>
                                 <div className="form-group">
