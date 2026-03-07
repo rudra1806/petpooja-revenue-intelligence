@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import BillView from './BillView'
 
 const VOICE_API = 'http://localhost:3002'
 
@@ -8,6 +9,10 @@ export default function ChatOrder({ sessionId }) {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [orderDone, setOrderDone] = useState(false)
+  const [confirmedOrder, setConfirmedOrder] = useState(null)
+  const [confirmedOrderId, setConfirmedOrderId] = useState(null)
+  const [confirmedTotal, setConfirmedTotal] = useState(null)
+  const [showBill, setShowBill] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -53,8 +58,12 @@ export default function ChatOrder({ sessionId }) {
       }
 
       if (data.completed) {
-        botMessages.push({ role: 'system', text: `Order confirmed! Order ID: ${data.order_id || 'N/A'} — Total: ₹${data.total || ''}` })
+        botMessages.push({ role: 'system', text: `Order confirmed! Order ID: ${data.order_id || 'N/A'} — Total: ₹${data.total || data.order?.final_price || ''}` })
         setOrderDone(true)
+        setConfirmedOrder(data.order || null)
+        setConfirmedOrderId(data.order_id || null)
+        setConfirmedTotal(data.total || data.order?.final_price || null)
+        setShowBill(true)
       }
 
       if (botMessages.length === 0) {
@@ -76,6 +85,15 @@ export default function ChatOrder({ sessionId }) {
     }
   }
 
+  const resetOrder = () => {
+    setMessages([INITIAL_MSG])
+    setOrderDone(false)
+    setConfirmedOrder(null)
+    setConfirmedOrderId(null)
+    setConfirmedTotal(null)
+    setShowBill(false)
+  }
+
   return (
     <>
       <div className="page-header">
@@ -95,12 +113,14 @@ export default function ChatOrder({ sessionId }) {
 
         <div className="chat-input-bar">
           {orderDone ? (
-            <button
-              onClick={() => { setMessages([INITIAL_MSG]); setOrderDone(false) }}
-              style={{ flex: 1 }}
-            >
-              New Order
-            </button>
+            <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+              <button onClick={() => setShowBill(true)} style={{ flex: 1 }}>
+                🧾 View Bill
+              </button>
+              <button onClick={resetOrder} style={{ flex: 1 }}>
+                New Order
+              </button>
+            </div>
           ) : (
             <>
               <input
@@ -118,6 +138,15 @@ export default function ChatOrder({ sessionId }) {
           )}
         </div>
       </div>
+
+      {showBill && (
+        <BillView
+          order={confirmedOrder}
+          orderId={confirmedOrderId}
+          total={confirmedTotal}
+          onClose={() => setShowBill(false)}
+        />
+      )}
     </>
   )
 }

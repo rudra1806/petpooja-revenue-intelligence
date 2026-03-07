@@ -5,6 +5,7 @@ const cors = require("cors");
 
 const orderRoutes = require("./routes/orderRoutes");
 const twilioRoutes = require("./routes/twilioRoutes");
+const billRoutes = require("./routes/billRoutes");
 const generateSpeech = require("./services/sarvamService");
 
 const app = express();
@@ -39,6 +40,7 @@ app.get("/test-sarvam", async (req, res) => {
 // Routes
 app.use("/", orderRoutes);
 app.use("/", twilioRoutes);
+app.use("/api", billRoutes);
 
 // ========================
 // SARVAM TTS ROUTE
