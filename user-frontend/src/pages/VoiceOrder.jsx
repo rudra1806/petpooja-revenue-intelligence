@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import BillView from './BillView'
 
 const VOICE_API = 'http://localhost:3002'
 
@@ -7,6 +8,10 @@ export default function VoiceOrder({ sessionId }) {
   const [transcript, setTranscript] = useState([])
   const [currentOrder, setCurrentOrder] = useState(null)
   const [orderCompleted, setOrderCompleted] = useState(false)
+  const [confirmedOrder, setConfirmedOrder] = useState(null)
+  const [confirmedOrderId, setConfirmedOrderId] = useState(null)
+  const [confirmedTotal, setConfirmedTotal] = useState(null)
+  const [showBill, setShowBill] = useState(false)
 
   const recognitionRef = useRef(null)
   const audioRef = useRef(null)
@@ -90,6 +95,10 @@ export default function VoiceOrder({ sessionId }) {
 
       if (data.completed) {
         setOrderCompleted(true)
+        setConfirmedOrder(data.order || null)
+        setConfirmedOrderId(data.order_id || null)
+        setConfirmedTotal(data.total || data.order?.final_price || null)
+        setShowBill(true)
         responseText = data.message || `Order confirmed! Your order ID is ${data.order_id}. Total: rupees ${data.total}. Thank you!`
       }
 
@@ -153,6 +162,10 @@ export default function VoiceOrder({ sessionId }) {
     setTranscript([])
     setCurrentOrder(null)
     setOrderCompleted(false)
+    setConfirmedOrder(null)
+    setConfirmedOrderId(null)
+    setConfirmedTotal(null)
+    setShowBill(false)
     setStatus('idle')
   }
 
@@ -182,22 +195,40 @@ export default function VoiceOrder({ sessionId }) {
         <p className="voice-status">{statusLabels[status]}</p>
 
         {orderCompleted && (
-          <button
-            onClick={resetOrder}
-            style={{
-              padding: '8px 20px',
-              borderRadius: 'var(--radius)',
-              border: '1px solid var(--accent)',
-              background: 'var(--accent)',
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-            }}
-          >
-            New Order
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => setShowBill(true)}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--positive)',
+                background: 'var(--positive)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              🧾 View Bill
+            </button>
+            <button
+              onClick={resetOrder}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--accent)',
+                background: 'var(--accent)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              New Order
+            </button>
+          </div>
         )}
 
         {/* Transcript */}
@@ -235,6 +266,15 @@ export default function VoiceOrder({ sessionId }) {
           </div>
         )}
       </div>
+
+      {showBill && (
+        <BillView
+          order={confirmedOrder}
+          orderId={confirmedOrderId}
+          total={confirmedTotal}
+          onClose={() => setShowBill(false)}
+        />
+      )}
     </>
   )
 }

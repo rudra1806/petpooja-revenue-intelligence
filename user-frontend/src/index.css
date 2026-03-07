@@ -770,3 +770,348 @@ tbody td {
     max-width: 85%;
   }
 }
+
+/* ── BILL VIEW ─────────────────────────────────── */
+.bill-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(28, 25, 23, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: billFadeIn 0.25s ease;
+}
+
+@keyframes billFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bill-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: billSlideUp 0.3s ease;
+}
+
+@keyframes billSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bill-toggle-bar {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-surface-alt);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.bill-toggle-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.bill-toggle-btn:hover {
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.bill-toggle-btn.active {
+  background: var(--text-primary);
+  color: var(--bg-surface);
+  border-color: var(--text-primary);
+}
+
+.bill-close-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.bill-close-btn:hover {
+  background: var(--negative-subtle);
+  color: var(--negative);
+  border-color: var(--negative);
+}
+
+/* ── NORMAL RECEIPT ────────────────────────────── */
+.bill-receipt {
+  padding: 24px 20px;
+}
+
+.bill-header {
+  text-align: center;
+  padding-bottom: 16px;
+  border-bottom: 2px dashed var(--border-light);
+  margin-bottom: 16px;
+}
+
+.bill-brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.bill-header h3 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.bill-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.bill-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 16px;
+}
+
+.bill-meta strong {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+/* Items table */
+.bill-items-section {
+  margin-bottom: 16px;
+}
+
+.bill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.bill-table thead th {
+  text-align: left;
+  padding: 8px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border-medium);
+}
+
+.bill-table tbody td {
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--border-light);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.bill-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.bill-modifiers {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.bill-modifier-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--bg-surface-alt);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+}
+
+.bill-combo-row td {
+  color: var(--text-secondary);
+}
+
+.bill-combo-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--positive-subtle);
+  color: var(--positive);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Totals */
+.bill-totals {
+  border-top: 2px dashed var(--border-light);
+  padding-top: 14px;
+  margin-bottom: 20px;
+}
+
+.bill-total-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.bill-total-line span:last-child {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+.bill-discount-line {
+  color: var(--positive);
+}
+
+.bill-grand-total {
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 2px solid var(--text-primary);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.bill-grand-total span:last-child {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* Footer */
+.bill-footer {
+  text-align: center;
+  padding-top: 16px;
+  border-top: 2px dashed var(--border-light);
+}
+
+.bill-footer p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.bill-print-btn {
+  padding: 8px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.bill-print-btn:hover {
+  background: var(--accent-hover);
+}
+
+/* ── JSON MODE ─────────────────────────────────── */
+.bill-json-view {
+  padding: 16px;
+}
+
+.bill-json-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.bill-copy-btn {
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.bill-copy-btn:hover {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+.bill-json-code {
+  background: #1C1917;
+  color: #F5F5F4;
+  padding: 20px;
+  border-radius: var(--radius);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* ── BILL RESPONSIVE ───────────────────────────── */
+@media (max-width: 768px) {
+  .bill-container {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  
+  .bill-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+}
