@@ -45,7 +45,7 @@ function App() {
     <div className="app">
       <header className="topbar">
         <div className="topbar-brand">
-          <div className="brand-mark">P</div>
+          <img src="/menu/logo.jpeg" alt="PetPooja Logo" className="brand-logo" />
           <h1>PetPooja<span>Order & Dine</span></h1>
         </div>
         <nav className="nav-items">
