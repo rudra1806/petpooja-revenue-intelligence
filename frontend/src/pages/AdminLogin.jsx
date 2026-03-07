@@ -41,15 +41,11 @@ export default function AdminLogin() {
                 boxShadow: 'var(--shadow-md)',
             }}>
                 {/* Brand */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-                    <div style={{
-                        width: 38, height: 38, borderRadius: '50%', background: 'var(--accent)',
-                        color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 700, fontSize: 18,
-                    }}>P</div>
-                    <span style={{ fontWeight: 700, fontSize: 18, color: 'var(--text-primary)' }}>
-                        PetPooja <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 14 }}>Admin</span>
-                    </span>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+                    <img src="/logo.jpeg" alt="PetPooja" style={{
+                        width: 72, height: 72, borderRadius: '50%', objectFit: 'cover',
+                        border: '1px solid var(--border-light)',
+                    }} />
                 </div>
 
                 <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>

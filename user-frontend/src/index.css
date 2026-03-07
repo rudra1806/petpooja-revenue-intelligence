@@ -847,18 +847,13 @@ tbody td {
   margin-bottom: 24px;
 }
 
-.auth-brand .brand-mark {
+.auth-brand .brand-logo {
   width: 34px;
   height: 34px;
-  border-radius: 9px;
-  background: var(--text-primary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 16px;
+  border-radius: 50%;
+  object-fit: cover;
   flex-shrink: 0;
+  border: 1px solid var(--border-light);
 }
 
 .auth-brand span {
@@ -868,19 +863,14 @@ tbody td {
   color: var(--text-primary);
 }
 
-/* Brand mark in topbar */
-.brand-mark {
+/* Brand logo in topbar */
+.brand-logo {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
-  background: var(--text-primary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 14px;
+  border-radius: 50%;
+  object-fit: cover;
   flex-shrink: 0;
+  border: 1px solid var(--border-light);
 }
 
 .auth-title {
@@ -1260,18 +1250,13 @@ tbody td {
   margin-bottom: 16px;
 }
 
-.bill-brand-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--accent);
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 18px;
+.bill-brand-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
   margin-bottom: 8px;
+  border: 1px solid var(--border-light);
 }
 
 .bill-header h3 {

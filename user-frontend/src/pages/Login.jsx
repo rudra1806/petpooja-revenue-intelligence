@@ -34,9 +34,8 @@ export default function Login({ onNavigate }) {
     return (
         <div className="auth-page">
             <div className="auth-card">
-                <div className="auth-brand">
-                    <div className="brand-mark">P</div>
-                    <span>PetPooja</span>
+                <div className="auth-brand" style={{ justifyContent: 'center' }}>
+                    <img src="/logo.jpeg" alt="PetPooja" className="brand-logo" style={{ width: 130, height: 130 }} />
                 </div>
 
                 <h2 className="auth-title">Welcome back</h2>

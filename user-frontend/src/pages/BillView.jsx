@@ -61,6 +61,7 @@ export default function BillView({ order, orderId, total, onClose }) {
         .total-row { border-top: 2px solid #1C1917; font-weight: 700; font-size: 16px; }
         .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #A8A29E; }
       </style></head><body>
+      <div style="text-align:center;margin-bottom:8px"><img src="/logo.jpeg" alt="PetPooja" style="width:48px;height:48px;border-radius:50%;object-fit:cover" /></div>
       <h2>PetPooja</h2>
       <div class="sub">Order & Dine</div>
       <div class="meta"><span>Order: ${billOrderId.substring(0, 8)}...</span><span>${orderDate}</span></div>
@@ -106,7 +107,7 @@ export default function BillView({ order, orderId, total, onClose }) {
                     <div className="bill-receipt">
                         {/* Header */}
                         <div className="bill-header">
-                            <div className="bill-brand-mark">P</div>
+                            <img src="/logo.jpeg" alt="PetPooja" className="bill-brand-logo" />
                             <h3>PetPooja</h3>
                             <span className="bill-subtitle">Order & Dine</span>
                         </div>

@@ -40,12 +40,14 @@
 
   --radius: 6px;
   --radius-sm: 4px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --transition: 150ms ease;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -65,10 +67,23 @@ body {
   min-height: 100vh;
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
 
 /* ── LAYOUT ─────────────────────────────────────── */
 .app {
@@ -97,18 +112,12 @@ body {
   flex-shrink: 0;
 }
 
-.topbar-brand .brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--text-primary);
-  color: var(--bg-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: -0.5px;
+.topbar-brand .brand-logo {
+  height: 36px;
+  width: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border-light);
 }
 
 .topbar-brand h1 {
@@ -254,11 +263,30 @@ body {
 }
 
 /* ── CLASSIFICATION BADGES ──────────────────────── */
-.badge-star { background: var(--classify-star-bg); color: var(--classify-star); }
-.badge-gem { background: var(--classify-gem-bg); color: var(--classify-gem); }
-.badge-trap { background: var(--classify-trap-bg); color: var(--classify-trap); }
-.badge-dog { background: var(--classify-dog-bg); color: var(--classify-dog); }
-.badge-success { background: var(--positive-subtle); color: var(--positive); }
+.badge-star {
+  background: var(--classify-star-bg);
+  color: var(--classify-star);
+}
+
+.badge-gem {
+  background: var(--classify-gem-bg);
+  color: var(--classify-gem);
+}
+
+.badge-trap {
+  background: var(--classify-trap-bg);
+  color: var(--classify-trap);
+}
+
+.badge-dog {
+  background: var(--classify-dog-bg);
+  color: var(--classify-dog);
+}
+
+.badge-success {
+  background: var(--positive-subtle);
+  color: var(--positive);
+}
 
 /* ── TABLE ──────────────────────────────────────── */
 .table-wrap {
@@ -567,7 +595,9 @@ tbody td {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -711,18 +741,30 @@ tbody td {
   max-width: 92vw;
   max-height: 88vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-md), 0 20px 60px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-md), 0 20px 60px rgba(0, 0, 0, 0.12);
   animation: slideUp 0.2s ease;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { transform: translateY(12px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -869,13 +911,25 @@ tbody td {
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(80px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(80px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 /* ── MARGIN INDICATOR ───────────────────────────── */
@@ -888,8 +942,13 @@ tbody td {
   margin-top: 6px;
 }
 
-.margin-bar.high { background: var(--positive-subtle); }
-.margin-bar.low { background: var(--caution-subtle); }
+.margin-bar.high {
+  background: var(--positive-subtle);
+}
+
+.margin-bar.low {
+  background: var(--caution-subtle);
+}
 
 .margin-bar .margin-label {
   font-size: 11px;
@@ -902,8 +961,13 @@ tbody td {
   font-weight: 600;
 }
 
-.margin-bar.high .margin-value { color: var(--positive); }
-.margin-bar.low .margin-value { color: var(--caution); }
+.margin-bar.high .margin-value {
+  color: var(--positive);
+}
+
+.margin-bar.low .margin-value {
+  color: var(--caution);
+}
 
 /* ── RESPONSIVE ─────────────────────────────────── */
 @media (max-width: 768px) {

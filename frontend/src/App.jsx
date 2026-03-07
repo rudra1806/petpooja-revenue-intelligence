@@ -51,7 +51,7 @@ function AppInner() {
     <div className="app">
       <header className="topbar">
         <div className="topbar-brand">
-          <div className="brand-mark">P</div>
+          <img src="/logo.jpeg" alt="PetPooja" className="brand-logo" />
           <h1>PetPooja<span>Revenue Intelligence</span></h1>
         </div>
         <nav className="nav-items">

@@ -87,9 +87,8 @@ export default function Register({ onNavigate }) {
     return (
         <div className="auth-page">
             <div className="auth-card" style={{ maxWidth: 480 }}>
-                <div className="auth-brand">
-                    <div className="brand-mark">P</div>
-                    <span>PetPooja</span>
+                <div className="auth-brand" style={{ justifyContent: 'center' }}>
+                    <img src="/logo.jpeg" alt="PetPooja" className="brand-logo" style={{ width: 72, height: 72 }} />
                 </div>
 
                 <h2 className="auth-title">Create your account</h2>
