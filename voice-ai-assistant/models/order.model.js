@@ -54,6 +54,10 @@ const orderSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    session_id: {
+        type: String,
+        default: null,
+    },
     order_channel: {
         type: String,
         required: true,
@@ -89,6 +93,7 @@ const orderSchema = new mongoose.Schema({
 
 orderSchema.index({ "items.product_id": 1 }); // this is used for efficient querying of orders by product_id
 orderSchema.index({ order_id: 1 }, { unique: true });
+orderSchema.index({ session_id: 1 });
 
 
 module.exports = mongoose.model("Order", orderSchema);

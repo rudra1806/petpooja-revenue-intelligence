@@ -49,6 +49,30 @@ const productSchema = new mongoose.Schema({
         default: 0,
     },
     modifiers: [modifierSchema],
+
+    // ─── PRICING INTELLIGENCE FIELDS ─────────────────────────────────
+    // These fields are populated when the owner applies a pricing recommendation
+    // from the Pricing Dashboard. They start as null and get set via PUT /api/product/:id/pricing.
+
+    // The analytics-recommended selling price based on BCG classification and demand data.
+    // Computed by getPricingRecommendations() using quadrant-based price adjustment rules.
+    suggested_price: {
+        type: Number,
+        default: null,
+    },
+    // Maximum discount percentage this product can safely sustain without
+    // dropping below the minimum acceptable margin (20%). Used by the combo
+    // generator to auto-cap combo discounts instead of using hardcoded values.
+    max_discount_pct: {
+        type: Number,
+        default: null,
+    },
+    // Floor price — the absolute minimum selling price that maintains a 20% margin.
+    // Calculated as: cost / (1 - 0.20). The owner should never price below this.
+    min_price: {
+        type: Number,
+        default: null,
+    },
 }, { timestamps: true });
 
 productSchema.index({ category: 1 }); // this is used for efficient querying of products by category

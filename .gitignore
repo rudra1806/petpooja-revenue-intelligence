@@ -1,3 +1,7 @@
 node_modules/
 .env
 .DS_Store
+voice-ai-assistant/.env
+recordings/
+temp/
+public/audio/

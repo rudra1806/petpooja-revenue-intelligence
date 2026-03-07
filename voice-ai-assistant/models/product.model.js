@@ -49,6 +49,18 @@ const productSchema = new mongoose.Schema({
         default: 0,
     },
     modifiers: [modifierSchema],
+    suggested_price: {
+        type: Number,
+        default: null,
+    },
+    max_discount_pct: {
+        type: Number,
+        default: null,
+    },
+    min_price: {
+        type: Number,
+        default: null,
+    },
 }, { timestamps: true });
 
 productSchema.index({ category: 1 }); // this is used for efficient querying of products by category
