@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import './index.css'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import AdminLogin from './pages/AdminLogin'
 import ProductAnalytics from './pages/ProductAnalytics'
 import ComboGenerator from './pages/ComboGenerator'
 import SuggestView from './pages/SuggestView'
@@ -24,12 +26,25 @@ function getTabFromHash() {
   return NAV_ITEMS.some(n => n.id === hash) ? hash : 'products'
 }
 
-function App() {
+function AppInner() {
+  const { admin, loading, logout } = useAuth()
   const [activeTab, setActiveTab] = useState(getTabFromHash)
 
   const navigate = (id) => {
     window.location.hash = id
     setActiveTab(id)
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-page)' }}>
+        <div style={{ color: 'var(--text-muted)' }}>Loading session...</div>
+      </div>
+    )
+  }
+
+  if (!admin) {
+    return <AdminLogin />
   }
 
   return (
@@ -50,6 +65,30 @@ function App() {
             </button>
           ))}
         </nav>
+
+        {/* Admin user info & logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: '50%', background: 'var(--accent)',
+              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 700
+            }}>
+              {admin.name.charAt(0).toUpperCase()}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{admin.name}</span>
+          </div>
+          <button onClick={logout} style={{
+            padding: '6px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border-medium)',
+            background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12,
+            fontWeight: 600, cursor: 'pointer', transition: 'all var(--transition)'
+          }}
+            onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--negative)'; e.currentTarget.style.color = 'var(--negative)'; e.currentTarget.style.background = 'var(--negative-subtle)' }}
+            onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border-medium)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-surface)' }}
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       <main className="main-content">
@@ -65,4 +104,10 @@ function App() {
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  )
+}

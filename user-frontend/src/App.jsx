@@ -1,14 +1,19 @@
 import { useState } from 'react'
 import './index.css'
+
+import { AuthProvider, useAuth } from './context/AuthContext'
+
 import Menu from './pages/Menu'
 import MyOrders from './pages/MyOrders'
 import ChatOrder from './pages/ChatOrder'
 import VoiceOrder from './pages/VoiceOrder'
 import CallOrder from './pages/CallOrder'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Profile from './pages/Profile'
 
-const API_BASE = 'http://localhost:3001/api'
+const API_BASE = 'http://localhost:3002/api'
 
-// Persistent session ID for this user
 function getSessionId() {
   let sid = localStorage.getItem('petpooja_session')
   if (!sid) {
@@ -20,7 +25,7 @@ function getSessionId() {
 
 const SESSION_ID = getSessionId()
 
-const NAV_ITEMS = [
+const APP_NAV = [
   { id: 'menu', label: 'Menu' },
   { id: 'chat', label: 'AI Chat' },
   { id: 'voice', label: 'Voice' },
@@ -28,58 +33,108 @@ const NAV_ITEMS = [
   { id: 'orders', label: 'My Orders' },
 ]
 
+const AUTH_TABS = ['login', 'register']
+
+const ALL_APP_TABS = [...APP_NAV.map(n => n.id), 'profile']
+
 function getTabFromHash() {
   const hash = window.location.hash.replace('#', '')
-  return NAV_ITEMS.some(n => n.id === hash) ? hash : 'menu'
+  const allTabs = [...ALL_APP_TABS, ...AUTH_TABS]
+  return allTabs.includes(hash) ? hash : null
 }
 
-function App() {
-  const [activeTab, setActiveTab] = useState(getTabFromHash)
+// ── Inner app (has access to AuthContext) ────────────────────────────────────
+function AppInner() {
+  const { user, loading, logout } = useAuth()
+  const [activeTab, setActiveTab] = useState(() => getTabFromHash() || 'login')
 
   const navigate = (id) => {
     window.location.hash = id
     setActiveTab(id)
   }
 
+  // While checking session
+  if (loading) {
+    return (
+      <div className="auth-page">
+        <div className="loading">
+          <div className="spinner" />
+          <span>Loading…</span>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Auth pages (always accessible when not logged in) ─────────────────────
+  if (!user) {
+    if (activeTab === 'register') return <Register onNavigate={navigate} />
+    return <Login onNavigate={navigate} />
+  }
+
+  // ── Main app (logged-in) ──────────────────────────────────────────────────
+  const safeTab = ALL_APP_TABS.includes(activeTab) ? activeTab : 'menu'
+
   return (
     <div className="app">
       <header className="topbar">
         <div className="topbar-brand">
           <div className="brand-mark">P</div>
-          <h1>PetPooja<span>Order & Dine</span></h1>
+          <h1>PetPooja<span>Order &amp; Dine</span></h1>
         </div>
+
         <nav className="nav-items">
-          {NAV_ITEMS.map(item => (
+          {APP_NAV.map(item => (
             <button
               key={item.id}
-              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              className={`nav-item ${safeTab === item.id ? 'active' : ''}`}
               onClick={() => navigate(item.id)}
             >
               {item.label}
             </button>
           ))}
         </nav>
+
+        {/* Clickable user name → profile page */}
+        <button
+          className={`topbar-profile-btn ${safeTab === 'profile' ? 'active' : ''}`}
+          onClick={() => navigate('profile')}
+          title="My Profile"
+        >
+          <span className="topbar-avatar">
+            {user.name.charAt(0).toUpperCase()}
+          </span>
+          <span className="topbar-user-name">{user.name}</span>
+        </button>
       </header>
 
       <main className="main-content">
-        <div style={{ display: activeTab === 'menu' ? 'block' : 'none' }}>
+        <div style={{ display: safeTab === 'menu' ? 'block' : 'none' }}>
           <Menu apiBase={API_BASE} />
         </div>
-        <div style={{ display: activeTab === 'chat' ? 'block' : 'none' }}>
+        <div style={{ display: safeTab === 'chat' ? 'block' : 'none' }}>
           <ChatOrder sessionId={SESSION_ID} />
         </div>
-        <div style={{ display: activeTab === 'voice' ? 'flex' : 'none', flexDirection: 'column' }}>
+        <div style={{ display: safeTab === 'voice' ? 'flex' : 'none', flexDirection: 'column' }}>
           <VoiceOrder sessionId={SESSION_ID} />
         </div>
-        <div style={{ display: activeTab === 'call' ? 'flex' : 'none', flexDirection: 'column' }}>
+        <div style={{ display: safeTab === 'call' ? 'flex' : 'none', flexDirection: 'column' }}>
           <CallOrder />
         </div>
-        <div style={{ display: activeTab === 'orders' ? 'block' : 'none' }}>
+        <div style={{ display: safeTab === 'orders' ? 'block' : 'none' }}>
           <MyOrders apiBase={API_BASE} sessionId={SESSION_ID} />
+        </div>
+        <div style={{ display: safeTab === 'profile' ? 'block' : 'none' }}>
+          <Profile />
         </div>
       </main>
     </div>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  )
+}
