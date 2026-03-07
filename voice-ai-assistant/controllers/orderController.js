@@ -216,7 +216,7 @@ exports.parseOrder = async (req, res) => {
             session.current_order.combos = [];
             session.markModified("current_order");
         }
- 
+
         // ════════════════════════════════════════════════════════════════════
         // 1. ORDER CONFIRMATION  (highest priority)
         // ════════════════════════════════════════════════════════════════════
@@ -267,7 +267,7 @@ exports.parseOrder = async (req, res) => {
             await session.save();
 
             return res.json({
-                message: `🎉 Order confirmed! You ordered: ${orderSummary(finalOrder)}. Total: ₹${finalPrice}.`,
+                message: `🎉 Order confirmed! PETPOOJA was happpy to serve you. You ordered: ${orderSummary(finalOrder)}. Total: ₹${finalPrice}.`,
                 order: finalOrder,
                 order_id: savedOrder.order_id,
                 total: finalPrice,
@@ -832,25 +832,25 @@ exports.parseOrder = async (req, res) => {
                 }
             }
         }
-               // ════════════════════════════════════════════════════════════
-// AI MENU QUESTION HANDLING
-// ════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════
+        // AI MENU QUESTION HANDLING
+        // ════════════════════════════════════════════════════════════
 
-if (await isQuestion(text)) {
+        if (await isQuestion(text)) {
 
-    console.log("🤖 AI menu question detected:", text);
+            console.log("🤖 AI menu question detected:", text);
 
-    const aiResponse = await menuAssistantAI(
-        text,
-        products,
-        allCombos
-    );
-    console.log("🤖 AI response:", aiResponse);
-    return res.json({
-        message: aiResponse,
-        ai: true
-    });
-}
+            const aiResponse = await menuAssistantAI(
+                text,
+                products,
+                allCombos
+            );
+            console.log("🤖 AI response:", aiResponse);
+            return res.json({
+                message: aiResponse,
+                ai: true
+            });
+        }
         // ── Nothing matched — let AI handle greetings / general chat ──────
         if (!parsedItems.length && !parsedCombos.length) {
             const aiResponse = await menuAssistantAI(text, products, allCombos);

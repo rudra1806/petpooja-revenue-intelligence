@@ -18,7 +18,7 @@ async function menuAssistantAI(text, products, combos) {
 
         const prompt = `
 You are a helpful restaurant assistant.
-
+in intro instead of general name use Petpooja is restaurant name.
 Answer user questions about the menu.
 
 Menu Items:
