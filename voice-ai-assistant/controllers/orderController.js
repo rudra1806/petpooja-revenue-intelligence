@@ -25,6 +25,7 @@ const INCREASE_WORDS = [
 ];
 const SET_QTY_WORDS = ["make", "set"];
 const REPLACE_WORDS = ["replace", "change", "swap"];
+const SKIP_ADDON_WORDS = ["no", "nope", "nah", "skip", "none", "nothing", "no thanks", "that's it", "thats it"];
 
 const FILLER_WORDS = [
     "give", "me", "can", "i", "get", "want",
@@ -77,7 +78,11 @@ function mergeComboIntoOrder(existingCombos, newCombo) {
  * Human-readable order summary: "2x Burger, 1x Fries, 1x Burger Combo (combo)"
  */
 function orderSummary(order) {
-    const itemParts = (order.items || []).map(i => `${i.quantity}x ${i.name}`);
+    const itemParts = (order.items || []).map(i => {
+        const mods = (i.selected_modifiers || []).filter(m => m.extra_price > 0);
+        const modStr = mods.length ? ` (${mods.map(m => `${m.name}: ${m.value}`).join(", ")})` : "";
+        return `${i.quantity}x ${i.name}${modStr}`;
+    });
     const comboParts = (order.combos || []).map(c => `${c.quantity}x ${c.combo_name} (combo)`);
     const all = [...itemParts, ...comboParts];
     return all.length ? all.join(", ") : "nothing yet";
@@ -88,7 +93,10 @@ function orderSummary(order) {
  */
 function calculateTotals(order) {
     const totalPrice = [
-        ...(order.items || []).map(i => i.base_price * i.quantity),
+        ...(order.items || []).map(i => {
+            const modExtra = (i.selected_modifiers || []).reduce((sum, m) => sum + (m.extra_price || 0), 0);
+            return (i.base_price + modExtra) * i.quantity;
+        }),
         ...(order.combos || []).map(c => c.combo_price * c.quantity)
     ].reduce((s, v) => s + v, 0);
 
@@ -136,6 +144,44 @@ function extractQuantityAndText(raw) {
     return { quantity, productText };
 }
 
+/**
+ * Build a human-readable add-on prompt for a product's modifiers.
+ */
+function formatAddonPrompt(productName, modifiers) {
+    const parts = modifiers
+        .filter(mod => mod.options.some(opt => opt.extra_price > 0))
+        .map(mod => {
+            const optStrs = mod.options.map(opt => {
+                const label = opt.value.replace(/_/g, " ");
+                return opt.extra_price > 0 ? `${label} (+₹${opt.extra_price})` : label;
+            });
+            return `${mod.name.replace(/_/g, " ")}: ${optStrs.join(", ")}`;
+        });
+    if (!parts.length) return null;
+    return `🛎 Would you like to customize your ${productName}? Options: ${parts.join("; ")}. Say what you'd like or "skip" to keep it as is.`;
+}
+
+/**
+ * Parse user text to extract selected modifier options.
+ */
+function parseAddonSelections(text, modifiers) {
+    const selected = [];
+    for (const mod of modifiers) {
+        for (const opt of mod.options) {
+            const optValue = opt.value.toLowerCase().replace(/_/g, " ");
+            if (text.includes(optValue)) {
+                selected.push({
+                    name: mod.name,
+                    value: opt.value,
+                    extra_price: opt.extra_price
+                });
+                break; // one selection per modifier
+            }
+        }
+    }
+    return selected;
+}
+
 // ─────────────────────────────────────────────
 // MAIN CONTROLLER
 // ─────────────────────────────────────────────
@@ -159,6 +205,7 @@ exports.parseOrder = async (req, res) => {
                 current_order: { items: [], combos: [] },
                 last_upsell: null,
                 pending_clarification: null,
+                pending_addon: null,
                 last_question: null,   // reused to store pending quantity during clarification
                 status: "ordering"
             });
@@ -213,6 +260,7 @@ exports.parseOrder = async (req, res) => {
             session.current_order = { items: [], combos: [] };
             session.last_upsell = null;
             session.pending_clarification = null;
+            session.pending_addon = null;
             session.last_question = null;
             session.status = "ordering";
             session.markModified("current_order");
@@ -262,6 +310,61 @@ exports.parseOrder = async (req, res) => {
 
             // Unrelated input — dismiss upsell silently and fall through
             session.last_upsell = null;
+            await session.save();
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // 2b. ADD-ON / CUSTOMIZATION RESPONSE
+        // ════════════════════════════════════════════════════════════════════
+        if (session.pending_addon) {
+            const addon = session.pending_addon;
+            const itemIdx = session.current_order.items.findIndex(
+                i => i.product_id.toString() === addon.product_id.toString()
+            );
+
+            if (itemIdx !== -1) {
+                // User wants to skip add-ons
+                if (SKIP_ADDON_WORDS.some(w => text.includes(w))) {
+                    session.pending_addon = null;
+                    await session.save();
+
+                    return res.json({
+                        message: `No customizations added. Order so far: ${orderSummary(session.current_order)}. Anything else, or say "confirm" to place your order?`,
+                        order: session.current_order
+                    });
+                }
+
+                // Parse which modifiers the user selected
+                const selections = parseAddonSelections(text, addon.modifiers);
+
+                if (selections.length) {
+                    // Apply selected modifiers to the item
+                    session.current_order.items[itemIdx].selected_modifiers = selections;
+                    session.pending_addon = null;
+                    session.markModified("current_order");
+                    await session.save();
+
+                    const modDesc = selections
+                        .filter(s => s.extra_price > 0)
+                        .map(s => `${s.name.replace(/_/g, " ")}: ${s.value.replace(/_/g, " ")} (+₹${s.extra_price})`)
+                        .join(", ");
+                    const modMsg = modDesc ? ` with ${modDesc}` : "";
+
+                    return res.json({
+                        message: `✅ Customized ${addon.product_name}${modMsg}. Order so far: ${orderSummary(session.current_order)}. Anything else?`,
+                        order: session.current_order
+                    });
+                }
+
+                // Couldn't parse — re-prompt
+                const prompt = formatAddonPrompt(addon.product_name, addon.modifiers);
+                return res.json({
+                    message: `I didn't catch that. ${prompt || 'Say "skip" to continue without customization.'}`
+                });
+            }
+
+            // Item no longer in order — clear addon state
+            session.pending_addon = null;
             await session.save();
         }
 
@@ -332,6 +435,25 @@ exports.parseOrder = async (req, res) => {
             }]);
 
             session.markModified("current_order");
+
+            // Check if product has paid add-ons/modifiers
+            const chosenProduct = await Product.findById(chosen.product_id);
+            if (chosenProduct && chosenProduct.modifiers && chosenProduct.modifiers.length) {
+                const addonPrompt = formatAddonPrompt(chosen.name, chosenProduct.modifiers);
+                if (addonPrompt) {
+                    session.pending_addon = {
+                        product_id: chosen.product_id,
+                        product_name: chosen.name,
+                        modifiers: chosenProduct.modifiers
+                    };
+                    await session.save();
+
+                    return res.json({
+                        message: `✅ Added ${qty}x ${chosen.name}. ${addonPrompt}`,
+                        order: session.current_order
+                    });
+                }
+            }
 
             // Combo upsell for the resolved item
             const combo = await Combo.findOne({ "items.product_id": chosen.product_id })
@@ -743,6 +865,33 @@ if (await isQuestion(text)) {
             mergeComboIntoOrder(session.current_order.combos, pc);
         }
         session.markModified("current_order");
+
+        // ── Check for add-ons/customizations on the first added product ────
+        if (parsedItems.length) {
+            const firstItem = parsedItems[0];
+            const fullProduct = products.find(p => p._id.toString() === firstItem.product_id.toString());
+
+            if (fullProduct && fullProduct.modifiers && fullProduct.modifiers.length) {
+                const addonPrompt = formatAddonPrompt(firstItem.name, fullProduct.modifiers);
+                if (addonPrompt) {
+                    session.pending_addon = {
+                        product_id: firstItem.product_id,
+                        product_name: firstItem.name,
+                        modifiers: fullProduct.modifiers
+                    };
+                    await session.save();
+
+                    const addedItemNames = parsedItems.map(i => `${i.quantity}x ${i.name}`);
+                    const addedComboNames = parsedCombos.map(c => `${c.quantity}x ${c.combo_name} (combo)`);
+                    const addedNames = [...addedItemNames, ...addedComboNames].join(", ");
+
+                    return res.json({
+                        message: `✅ Added ${addedNames}. ${addonPrompt}`,
+                        order: session.current_order
+                    });
+                }
+            }
+        }
 
         // ── Combo upsell (only if items were added, not combos) ────────────
         let upsell = null;

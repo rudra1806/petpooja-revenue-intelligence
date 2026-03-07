@@ -11,7 +11,11 @@ const sessionSchema = new mongoose.Schema(
                     name: String,
                     quantity: { type: Number, default: 1 },
                     base_price: Number,
-                    selected_modifiers: [{ type: String }]
+                    selected_modifiers: [{
+                        name: String,
+                        value: String,
+                        extra_price: { type: Number, default: 0 }
+                    }]
                 }
             ],
             combos: [
@@ -26,6 +30,7 @@ const sessionSchema = new mongoose.Schema(
 
         last_upsell: { type: mongoose.Schema.Types.Mixed, default: null },
         pending_clarification: { type: mongoose.Schema.Types.Mixed, default: null },
+        pending_addon: { type: mongoose.Schema.Types.Mixed, default: null },
         last_question: { type: String, default: null },
         status: { type: String, default: "ordering" }
     },
