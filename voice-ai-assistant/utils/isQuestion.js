@@ -1,63 +1,57 @@
-const QUESTION_WORDS = [
-    "which",
-    "suggest",
-    "recommend",
-    "options",
-    "menu",
-    "vegetarian",
-    "veg",
-    "best",
-    "popular",
-    "spicy",
-    "price",
-    "cost",
-    "available"
-];
+const { OpenAI } = require("openai");
 
-// Words that indicate ordering intent — skip question detection
-const ORDER_INTENT_WORDS = [
-    "give me",
-    "i want",
-    "i need",
-    "order",
-    "add",
-    "get me",
-    "i'll have",
-    "ill have",
-    "i will have",
-    "can i have",
-    "can i get",
-    "please give",
-    "one ",
-    "two ",
-    "three ",
-    "four ",
-    "five "
-];
+const client = new OpenAI({
+    baseURL: "https://router.huggingface.co/v1",
+    apiKey: process.env.HF_API_KEY
+});
 
-function isQuestion(text) {
+async function isQuestionAI(text) {
 
-    // If the user clearly wants to order something, don't treat as a question
-    for (let phrase of ORDER_INTENT_WORDS) {
-        if (text.includes(phrase)) {
-            return false;
-        }
+    try {
+
+        const prompt = `
+You are a classifier.
+
+Determine if the user sentence is a QUESTION about a restaurant menu.
+
+Examples:
+
+"I want a burger" -> NO
+"Give me 2 pizzas" -> NO
+"What burgers do you have?" -> YES
+"Suggest something spicy" -> YES
+"Do you have vegetarian food?" -> YES
+"Add fries" -> NO
+
+User sentence:
+"${text}"
+
+Answer ONLY with YES or NO.
+`;
+
+        const response = await client.chat.completions.create({
+            model: "meta-llama/Llama-3.1-8B-Instruct:cerebras",
+            messages: [
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            temperature: 0
+        });
+
+        const answer = response.choices[0].message.content
+            .trim()
+            .toLowerCase();
+
+        return answer.includes("yes");
+
+    } catch (error) {
+
+        console.log("AI question detection failed:", error);
+        return false;
+
     }
-
-    if (text.includes("?")) return true;
-
-    // "what" only counts as question if NOT an ordering phrase
-    if (text.includes("what") && !text.includes("what i")) {
-        return true;
-    }
-
-    for (let word of QUESTION_WORDS) {
-        if (text.includes(word)) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
-module.exports = isQuestion;
+module.exports = isQuestionAI;
