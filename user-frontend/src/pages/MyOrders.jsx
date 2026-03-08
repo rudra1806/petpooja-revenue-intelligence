@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 
-export default function MyOrders({ apiBase, sessionId }) {
+const VOICE_API = 'http://localhost:3002'
+
+export default function MyOrders() {
+  const { user } = useAuth()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
 
   useEffect(() => {
-    fetch(`${apiBase}/order/session/${sessionId}`)
+    const uid = user?._id || user?.id
+    if (!uid) { setLoading(false); return }
+    fetch(`${VOICE_API}/order/user/${uid}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => { setOrders(d.data || []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [apiBase, sessionId])
+  }, [user])
 
   if (loading) return <div className="loading"><div className="spinner"></div><p>Loading your orders...</p></div>
 

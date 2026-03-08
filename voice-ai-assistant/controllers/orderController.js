@@ -1,11 +1,28 @@
+const mongoose = require("mongoose");
 const Product = require("../models/product.model");
 const Combo = require("../models/combo.model");
 const Order = require("../models/order.model");
 const Session = require("../models/session.model");
 const Fuse = require("fuse.js");
 const { v4: uuidv4 } = require("uuid"); // npm i uuid
+const jwt = require("jsonwebtoken");
 const detectIntent = require("../utils/intentDetector");
 const menuAssistantAI = require("../ai/menuAssistantAI");
+
+/**
+ * Optionally extract the authenticated user's id from the JWT cookie.
+ * Returns null if no token or invalid — does NOT block the request.
+ */
+function getUserIdFromRequest(req) {
+    try {
+        const token = req.cookies && req.cookies.auth_token;
+        if (!token) return null;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        return decoded.id || null;
+    } catch {
+        return null;
+    }
+}
 
 // ─────────────────────────────────────────────
 // CONSTANTS
@@ -258,9 +275,14 @@ exports.parseOrder = async (req, res) => {
             const finalOrder = JSON.parse(JSON.stringify(session.current_order));
             const { totalItems, totalPrice, finalPrice } = calculateTotals(finalOrder);
 
+            // Resolve authenticated user (if logged in)
+            const userId = getUserIdFromRequest(req);
+
             // Persist to Order collection — matches orderSchema exactly
             const savedOrder = await Order.create({
                 order_id: uuidv4(),
+                user_id: userId,          // links order to the logged-in user
+                session_id: sessionId,    // keep for backwards compat
                 order_channel: "voice",
                 items: finalOrder.items.map(i => ({
                     product_id: i.product_id,
@@ -952,5 +974,23 @@ exports.parseOrder = async (req, res) => {
     } catch (error) {
         console.error("❌ parseOrder error:", error);
         res.status(500).json({ message: "Server error. Please try again." });
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET ORDERS BY USER (for My Orders page)
+// ─────────────────────────────────────────────────────────────────────────────
+
+exports.getOrdersByUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+            return res.json({ success: true, data: [] });
+        }
+        const orders = await Order.find({ user_id: userId }).sort({ createdAt: -1 });
+        return res.json({ success: true, data: orders });
+    } catch (error) {
+        console.error("❌ getOrdersByUser error:", error);
+        return res.status(500).json({ success: false, message: "Server error." });
     }
 };
