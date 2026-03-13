@@ -70,7 +70,7 @@ The platform does not just display data — it **mines order history**, **genera
 - **AI Text Chat Ordering** — Type orders in natural language (e.g. "give me 2 burgers and a coke")
 - **AI Voice Ordering** — Speak orders via the browser microphone; AI responds with voice
 - **Phone Call Ordering** — Call a real Twilio phone number; a fully automated AI agent takes the order
-- **My Orders** — Session-based order history with full item and price breakdown
+- **My Orders** — Authenticated user order history with full item, modifier, and price breakdown
 - **Email Verification** — Registration flow with email verification via Gmail SMTP
 
 ---
@@ -90,7 +90,7 @@ The platform does not just display data — it **mines order history**, **genera
 │   │ • Pricing Dashboard          │         │ • AI Text Chat Ordering      │    │
 │   │ • Smart Combo Generator      │         │ • Voice Ordering (Web Speech)│    │
 │   │ • Manage Combos              │         │ • Phone Ordering (Twilio)    │    │
-│   │ • Upsell Suggestion View     │         │ • My Orders (Session)        │    │
+│   │ • Upsell Suggestion View     │         │ • My Orders (Auth Linked)    │    │
 │   │ • Order Management Table     │         │                              │    │
 │   └──────────┬───────────────────┘         └─────────┬──────┬────────────┘    │
 │              │ REST API                              │      │                  │
@@ -194,7 +194,7 @@ hackamined/
 │           ├── ChatOrder.jsx              # AI text-based ordering interface
 │           ├── VoiceOrder.jsx             # Voice ordering with Web Speech API
 │           ├── CallOrder.jsx              # Phone ordering link to Twilio number
-│           └── MyOrders.jsx               # Session-filtered order history
+│           └── MyOrders.jsx               # User-authenticated order history
 │
 ├── voice-ai-assistant/                    # Voice AI Server (Port 3002)
 │   ├── server.js                          # Entry point — Express, routes, TTS endpoint
@@ -390,7 +390,8 @@ JWT_SECRET=your-jwt-secret-key
 | Field | Type | Description |
 |-------|------|-------------|
 | `order_id` | String | Unique UUID identifier (required, unique) |
-| `session_id` | String | User session ID for per-user filtering |
+| `user_id` | ObjectId| Links order to authenticated user via JWT |
+| `session_id` | String | User session ID for fallback tracking |
 | `order_channel` | Enum | `voice`, `app`, `counter` (required) |
 | `items` | Array | `[{product_id, name, quantity, base_price, selected_modifiers}]` |
 | `combos` | Array | `[{combo_id, combo_name, quantity, combo_price}]` |
@@ -500,6 +501,7 @@ Maintains stateful ordering sessions for AI ordering across text, voice, and pho
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/parse-order` | Parse natural language text/voice input into structured order |
+| `GET` | `/order/user/:userId` | Fetch all orders belonging to the authenticated user |
 | `POST` | `/tts` | Convert text to speech via Sarvam AI, returns base64 WAV |
 | `GET` | `/test-sarvam` | Test TTS with `?text=` query parameter, plays audio in browser |
 | `POST` | `/twilio/voice` | Twilio webhook — handles incoming phone call, returns greeting TwiML |
@@ -706,9 +708,9 @@ Every input message is processed through a **priority-based decision pipeline**:
 ```
 Input Text (from Chat / Voice / Phone)
     │
-    ├─→ Step 1: Is it a menu question?
-    │           "what combos do you have?" "is X vegetarian?"
-    │           → Route to Menu AI (LLama 3 70B) for a natural language answer
+    ├─→ Step 1: Is it a negotiation or menu question?
+    │           "give it for 100 rs?" → Redirect to budget options
+    │           "what combos do you have?" → Route to Menu AI
     │
     ├─→ Step 2: Is it a confirmation?
     │           "confirm", "place order", "done", "finish", "that's all"
@@ -741,8 +743,9 @@ Input Text (from Chat / Voice / Phone)
 | **Quantity Parsing** | Understands "two", "a", "another", "three", numeric digits — extracts quantity + item text |
 | **Session Persistence** | MongoDB Session model tracks `current_order`, `last_upsell`, `pending_clarification` |
 | **Auto-Upsell** | After each new item is added, the best matching combo is suggested |
-| **Clarification Flow** | Multiple fuzzy matches → numbered prompt → user picks by number |
+| **Clarification Flow** | Resolves generic category queries (e.g. "pizza") or multiple fuzzy matches → numbered prompt |
 | **Order Modification** | Increase, decrease, set, or remove item quantities mid-order |
+| **Add-On Modifiers** | Captures specific modifiers (e.g. extra cheese, large size) and reflects them in the order summary |
 
 **Response Schema:**
 ```json
@@ -956,7 +959,7 @@ All tabs remain **mounted in the DOM** using CSS `display: none` instead of cond
 
 ### My Orders (`MyOrders.jsx`)
 
-- `GET /api/order/session/:sessionId` — fetches only this user's orders
+- Fetches `GET http://localhost:3002/order/user/:userId` — loads authenticated user orders
 - **Stats cards:** Total Orders placed, Total Amount Spent, Average Order Value
 - **Expandable order cards** showing:
   - Order ID, channel badge (`voice` / `app` / `counter`), timestamp
