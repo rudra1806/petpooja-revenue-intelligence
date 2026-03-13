@@ -54,6 +54,11 @@ const orderSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    user_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+    },
     session_id: {
         type: String,
         default: null,
@@ -93,6 +98,7 @@ const orderSchema = new mongoose.Schema({
 
 orderSchema.index({ "items.product_id": 1 });
 orderSchema.index({ session_id: 1 });
+orderSchema.index({ user_id: 1 });
 
 
 module.exports = mongoose.model("Order", orderSchema);

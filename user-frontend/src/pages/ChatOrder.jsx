@@ -30,6 +30,7 @@ export default function ChatOrder({ sessionId }) {
     try {
       const res = await fetch(`${VOICE_API}/parse-order`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, text }),
       })
