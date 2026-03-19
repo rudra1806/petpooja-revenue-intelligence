@@ -3,9 +3,13 @@ const mongoose = require("mongoose");
 const connectDB = async () => {
     try {
         const connection = await mongoose.connect(
-            `${process.env.MONGO_URL}`
+            `${process.env.MONGO_URL}`,
+            {
+                family: 4,
+                serverSelectionTimeoutMS: 15000,
+            }
         );
-    
+
         console.log(
             "MongoDB connected !! DB HOST:",
             connection.connection.host

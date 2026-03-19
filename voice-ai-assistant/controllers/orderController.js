@@ -30,7 +30,19 @@ function getUserIdFromRequest(req) {
 
 const CONFIRM_WORDS = ["yes", "yeah", "ok", "okay", "sure", "yep"];
 const REJECT_WORDS = ["no", "nope", "nah"];
-const CONFIRM_ORDER_WORDS = ["confirm", "place order", "done", "finish", "that's all", "thats all"];
+const CONFIRM_ORDER_WORDS = [
+    "confirm", "comfirm", "confrim", "cofirm",
+    "place order", "place my order", "done", "finish",
+    "that's all", "thats all", "confirm order", "confirm my order"
+];
+
+/**
+ * Fuzzy check for "confirm"-like words to handle typos.
+ * Matches words that start with 'con' or 'com' and end with 'rm'.
+ */
+function isCloseToConfirm(text) {
+    return /\b[cC][oO][nmNM][fF]?[iIeE]?[rR]?[mM]\b/.test(text);
+}
 const DELETE_WORDS = ["remove", "delete", "cancel"];
 const INCREASE_WORDS = [
     "increase",
@@ -96,7 +108,7 @@ function mergeComboIntoOrder(existingCombos, newCombo) {
  */
 function orderSummary(order) {
     const itemParts = (order.items || []).map(i => {
-        const mods = (i.selected_modifiers || []).filter(m => m.extra_price > 0);
+        const mods = (i.selected_modifiers || []);
         const modStr = mods.length ? ` (${mods.map(m => `${m.name}: ${m.value}`).join(", ")})` : "";
         return `${i.quantity}x ${i.name}${modStr}`;
     });
@@ -242,6 +254,21 @@ exports.parseOrder = async (req, res) => {
             session.markModified("current_order");
         }
 
+        // ── Handle bare "no" / "nope" EARLY (before intent detection) ────
+        if (REJECT_WORDS.some(w => text === w)) {
+            const hasItems = session.current_order.items?.length > 0;
+            const hasCombos = session.current_order.combos?.length > 0;
+            if (hasItems || hasCombos) {
+                return res.json({
+                    message: `Alright! Your order so far: ${orderSummary(session.current_order)}. Say "confirm" to place your order or keep adding items.`,
+                    order: session.current_order
+                });
+            }
+            return res.json({
+                message: `No worries! What would you like to order? Check out our menu!`
+            });
+        }
+
         // ── Detect Intent ───────────────────────────────────────────────────
         const intent = await detectIntent(text);
         console.log(`🎯 [${sessionId}] Detected Intent: ${intent}`);
@@ -264,7 +291,7 @@ exports.parseOrder = async (req, res) => {
         // ════════════════════════════════════════════════════════════════════
         // 1. ORDER CONFIRMATION  (highest priority)
         // ════════════════════════════════════════════════════════════════════
-        if (CONFIRM_ORDER_WORDS.some(w => text.includes(w))) {
+        if (CONFIRM_ORDER_WORDS.some(w => text.includes(w)) || isCloseToConfirm(text)) {
             const hasItems = session.current_order.items?.length > 0;
             const hasCombos = session.current_order.combos?.length > 0;
 
@@ -395,8 +422,10 @@ exports.parseOrder = async (req, res) => {
                     await session.save();
 
                     const modDesc = selections
-                        .filter(s => s.extra_price > 0)
-                        .map(s => `${s.name.replace(/_/g, " ")}: ${s.value.replace(/_/g, " ")} (+₹${s.extra_price})`)
+                        .map(s => {
+                            const label = `${s.name.replace(/_/g, " ")}: ${s.value.replace(/_/g, " ")}`;
+                            return s.extra_price > 0 ? `${label} (+₹${s.extra_price})` : label;
+                        })
                         .join(", ");
                     const modMsg = modDesc ? ` with ${modDesc}` : "";
 
@@ -418,115 +447,133 @@ exports.parseOrder = async (req, res) => {
             await session.save();
         }
 
-        // ── Handle bare "no" / "nope" when no upsell is pending ─────────────
-        if (REJECT_WORDS.some(w => text === w)) {
-            return res.json({
-                message: `Alright! Your order so far: ${orderSummary(session.current_order)}. Anything else, or say "confirm" to place your order?`,
-                order: session.current_order
-            });
-        }
+        // (bare "no" is now handled earlier, before intent detection)
 
         // ════════════════════════════════════════════════════════════════════
         // 3. CLARIFICATION RESPONSE  (user resolving an ambiguous product)
         // ════════════════════════════════════════════════════════════════════
         if (session.pending_clarification) {
             const options = session.pending_clarification;
-            let chosen = null;
 
-            // a) Numeric pick: "1", "2", "3"
-            const numMatch = text.match(/\b([123])\b/);
-            if (numMatch) {
-                const idx = parseInt(numMatch[1], 10) - 1;
-                if (options[idx]) chosen = options[idx];
-            }
+            // ── Detect if user is ordering something DIFFERENT (not answering clarification) ──
+            const isNewOrderAttempt = /\b(want|order|give|get|try|have)\b/i.test(text);
+            const clarOptionNames = options.map(o => o.name.toLowerCase());
+            const mentionsExistingOption = clarOptionNames.some(n => text.includes(n));
 
-            // b) Direct / substring name match
-            if (!chosen) {
-                for (const option of options) {
-                    if (
-                        text.includes(option.name.toLowerCase()) ||
-                        option.name.toLowerCase().includes(text)
-                    ) {
-                        chosen = option;
-                        break;
+            // Check if text matches a DIFFERENT product in the menu
+            const allProductsForClar = await Product.find();
+            const cleanedForClar = text.replace(/\b(want|order|give|get|try|have|i|me|to|please|some|a|an|the)\b/gi, "").trim();
+            const clarFuseCheck = new Fuse(allProductsForClar, { keys: ["name"], threshold: 0.4 });
+            const fuseHits = clarFuseCheck.search(cleanedForClar);
+            const matchesDifferentProduct = fuseHits.length > 0 && !clarOptionNames.some(
+                n => fuseHits[0].item.name.toLowerCase() === n
+            );
+
+            if ((isNewOrderAttempt && !mentionsExistingOption && matchesDifferentProduct)) {
+                // User changed their mind — clear clarification and fall through to normal parsing
+                console.log(`🔄 [${sessionId}] User changed order topic, clearing pending clarification`);
+                session.pending_clarification = null;
+                session.last_question = null;
+                await session.save();
+            } else {
+                // ── Original clarification resolution logic ──
+                let chosen = null;
+
+                // a) Numeric pick: "1", "2", "3"
+                const numMatch = text.match(/\b([123])\b/);
+                if (numMatch) {
+                    const idx = parseInt(numMatch[1], 10) - 1;
+                    if (options[idx]) chosen = options[idx];
+                }
+
+                // b) Direct / substring name match
+                if (!chosen) {
+                    for (const option of options) {
+                        if (
+                            text.includes(option.name.toLowerCase()) ||
+                            option.name.toLowerCase().includes(text)
+                        ) {
+                            chosen = option;
+                            break;
+                        }
                     }
                 }
-            }
 
-            // c) Fuzzy fallback
-            if (!chosen) {
-                const clarFuse = new Fuse(options, { keys: ["name"], threshold: 0.5 });
-                const match = clarFuse.search(text);
-                if (match.length) chosen = match[0].item;
-            }
+                // c) Fuzzy fallback
+                if (!chosen) {
+                    const clarFuse = new Fuse(options, { keys: ["name"], threshold: 0.5 });
+                    const match = clarFuse.search(text);
+                    if (match.length) chosen = match[0].item;
+                }
 
-            // Still unclear — re-prompt
-            if (!chosen) {
-                return res.json({
-                    clarification: `Please choose one:\n${options.map((o, i) => `${i + 1}. ${o.name} — ₹${o.base_price}`).join("\n")}`
-                });
-            }
-
-            // Extract quantity from clarification response text (e.g. "I want three classic burger")
-            const { quantity: parsedQty } = extractQuantityAndText(text);
-            // Use quantity from response if explicitly stated, otherwise fall back to stored quantity
-            const storedQty = parseInt(session.last_question) || 1;
-            const qty = parsedQty > 1 ? parsedQty : storedQty;
-
-            session.pending_clarification = null;
-            session.last_question = null;
-
-            mergeIntoOrder(session.current_order.items, [{
-                product_id: chosen.product_id,
-                name: chosen.name,
-                quantity: qty,
-                base_price: chosen.base_price,
-                selected_modifiers: []
-            }]);
-
-            session.markModified("current_order");
-
-            // Check if product has paid add-ons/modifiers
-            const chosenProduct = await Product.findById(chosen.product_id);
-            if (chosenProduct && chosenProduct.modifiers && chosenProduct.modifiers.length) {
-                const addonPrompt = formatAddonPrompt(chosen.name, chosenProduct.modifiers);
-                if (addonPrompt) {
-                    session.pending_addon = {
-                        product_id: chosen.product_id,
-                        product_name: chosen.name,
-                        modifiers: chosenProduct.modifiers
-                    };
-                    await session.save();
-
+                // Still unclear — re-prompt
+                if (!chosen) {
                     return res.json({
-                        message: `✅ Added ${qty}x ${chosen.name}. ${addonPrompt}`,
-                        order: session.current_order
+                        clarification: `Please choose one:\n${options.map((o, i) => `${i + 1}. ${o.name} — ₹${o.base_price}`).join("\n")}`
                     });
                 }
-            }
 
-            // Combo upsell for the resolved item
-            const combo = await Combo.findOne({ "items.product_id": chosen.product_id })
-                .sort({ combo_score: -1 });
+                // Extract quantity from clarification response text (e.g. "I want three classic burger")
+                const { quantity: parsedQty } = extractQuantityAndText(text);
+                // Use quantity from response if explicitly stated, otherwise fall back to stored quantity
+                const storedQty = parseInt(session.last_question) || 1;
+                const qty = parsedQty > 1 ? parsedQty : storedQty;
 
-            let upsell = null;
-            if (combo) {
-                upsell = `🍱 How about our "${combo.combo_name}" combo for ₹${combo.combo_price}? Great value!`;
-                session.last_upsell = {
-                    combo_id: combo._id,
-                    combo_name: combo.combo_name,
-                    combo_price: combo.combo_price
-                };
-            }
+                session.pending_clarification = null;
+                session.last_question = null;
 
-            await session.save();
+                mergeIntoOrder(session.current_order.items, [{
+                    product_id: chosen.product_id,
+                    name: chosen.name,
+                    quantity: qty,
+                    base_price: chosen.base_price,
+                    selected_modifiers: []
+                }]);
 
-            return res.json({
-                message: `✅ Added ${qty}x ${chosen.name}. Order so far: ${orderSummary(session.current_order)}. Anything else?`,
-                order: session.current_order,
-                upsell
-            });
-        }
+                session.markModified("current_order");
+
+                // Check if product has paid add-ons/modifiers
+                const chosenProduct = await Product.findById(chosen.product_id);
+                if (chosenProduct && chosenProduct.modifiers && chosenProduct.modifiers.length) {
+                    const addonPrompt = formatAddonPrompt(chosen.name, chosenProduct.modifiers);
+                    if (addonPrompt) {
+                        session.pending_addon = {
+                            product_id: chosen.product_id,
+                            product_name: chosen.name,
+                            modifiers: chosenProduct.modifiers
+                        };
+                        await session.save();
+
+                        return res.json({
+                            message: `✅ Added ${qty}x ${chosen.name}. ${addonPrompt}`,
+                            order: session.current_order
+                        });
+                    }
+                }
+
+                // Combo upsell for the resolved item
+                const combo = await Combo.findOne({ "items.product_id": chosen.product_id })
+                    .sort({ combo_score: -1 });
+
+                let upsell = null;
+                if (combo) {
+                    upsell = `🍱 How about our "${combo.combo_name}" combo for ₹${combo.combo_price}? Great value!`;
+                    session.last_upsell = {
+                        combo_id: combo._id,
+                        combo_name: combo.combo_name,
+                        combo_price: combo.combo_price
+                    };
+                }
+
+                await session.save();
+
+                return res.json({
+                    message: `✅ Added ${qty}x ${chosen.name}. Order so far: ${orderSummary(session.current_order)}. Anything else?`,
+                    order: session.current_order,
+                    upsell
+                });
+            } // end else (clarification resolution)
+        } // end if (session.pending_clarification)
 
         // ════════════════════════════════════════════════════════════════════
         // DELETE OR REDUCE ITEM FROM ORDER

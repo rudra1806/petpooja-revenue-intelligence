@@ -5,3 +5,16 @@ voice-ai-assistant/.env
 recordings/
 temp/
 public/audio/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+.Thumbs.db
